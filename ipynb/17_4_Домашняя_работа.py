@@ -1,16 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.16.4
-#   kernelspec:
-#     display_name: Python 3
-#     name: python3
-# ---
-
 # %% [markdown] id="view-in-github" colab_type="text"
 # <a href="https://colab.research.google.com/github/Ads369/Ads_2s/blob/main/17_4_%D0%94%D0%BE%D0%BC%D0%B0%D1%88%D0%BD%D1%8F%D1%8F_%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%B0.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
@@ -31,23 +18,16 @@
 #
 # Также вы можете получить дополнительно 1 балл, если выполните все предложенные задания в задаче о Титанике (17.1), проанализируете "увеличенную модель" (17.2).
 
-# %% pip
-# !pip uninstall scikit-learn -y
-# !pip install scikit-learn==1.2.2
-# !pip install scikeras
-# !pip install tensorflow
-
 # %% Import
 import matplotlib.pyplot as plt
 import numpy as np
-from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import StratifiedKFold
 from tensorflow.keras import layers, models, regularizers
 from tensorflow.keras.datasets import imdb
 
 
-# %% Main block
+# %% Main
 # Load and preprocess data
 def load_and_preprocess_data():
     (train_data, train_labels), (test_data, test_labels) = imdb.load_data(
@@ -120,7 +100,7 @@ def plot_history(history):
     plt.title("Model Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.ylim(0, 1)
+    plt.ylim(0,1)
     plt.legend()
 
     plt.subplot(1, 2, 2)
@@ -129,7 +109,7 @@ def plot_history(history):
     plt.title("Model Accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
-    plt.ylim(0, 1)
+    plt.ylim(0,1)
     plt.legend()
 
     plt.tight_layout()
@@ -185,17 +165,15 @@ def main():
     if val_accuracy > 0.95 or test_score > 0.93:
         print("Bonus task")
 
+
 # %% Constants
 # Constants
-### THIS GOOD CASE BUT NOT ENOUGH
 # EPOCHS = 10
 # BATCH_SIZE = 128
 # DICT_SPACE = 10000
 # NUM_FOLDS = 5
 # LAYER_SIZE = 16
 # DROPOUT_RATE = 0.5
-
-# EXPEREMENTAL ZONE
 EPOCHS = 20
 BATCH_SIZE = 512
 DICT_SPACE = 30000
