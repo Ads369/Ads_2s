@@ -1,3 +1,16 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.16.4
+#   kernelspec:
+#     display_name: Python 3
+#     name: python3
+# ---
+
 # %% [markdown] id="view-in-github" colab_type="text"
 # <a href="https://colab.research.google.com/github/Ads369/Ads_2s/blob/main/17_4_%D0%94%D0%BE%D0%BC%D0%B0%D1%88%D0%BD%D1%8F%D1%8F_%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%B0.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
@@ -174,10 +187,10 @@ def main():
 # NUM_FOLDS = 5
 # LAYER_SIZE = 16
 # DROPOUT_RATE = 0.5
-EPOCHS = 20
+EPOCHS = 5
 BATCH_SIZE = 512
 DICT_SPACE = 30000
-NUM_FOLDS = 7
+NUM_FOLDS = 5
 LAYER_SIZE = 4
 DROPOUT_RATE = 0.6
 
