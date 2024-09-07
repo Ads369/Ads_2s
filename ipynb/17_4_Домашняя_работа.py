@@ -31,7 +31,12 @@
 #
 # Также вы можете получить дополнительно 1 балл, если выполните все предложенные задания в задаче о Титанике (17.1), проанализируете "увеличенную модель" (17.2).
 
+# %% pip
+#
+
 # %% Import
+import time
+
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import accuracy_score
@@ -41,6 +46,18 @@ from tensorflow.keras.datasets import imdb
 
 
 # %% Main
+def time_execution(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        print(f"Function {func.__name__} took {execution_time:.4f} seconds to execute.")
+        return result
+
+    return wrapper
+
+
 # Load and preprocess data
 def load_and_preprocess_data():
     (train_data, train_labels), (test_data, test_labels) = imdb.load_data(
@@ -113,7 +130,7 @@ def plot_history(history):
     plt.title("Model Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.ylim(0,1)
+    plt.ylim(0, 1)
     plt.legend()
 
     plt.subplot(1, 2, 2)
@@ -122,7 +139,7 @@ def plot_history(history):
     plt.title("Model Accuracy")
     plt.xlabel("Epoch")
     plt.ylabel("Accuracy")
-    plt.ylim(0,1)
+    plt.ylim(0, 1)
     plt.legend()
 
     plt.tight_layout()
@@ -130,6 +147,7 @@ def plot_history(history):
 
 
 # Main execution
+@time_execution
 def main():
     x_train, y_train, x_test, y_test = load_and_preprocess_data()
 
