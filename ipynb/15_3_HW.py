@@ -50,13 +50,19 @@ print(f"Test shape: {x_test.shape}")
 
 
 # %% Cell : check balance
-# for i in range(26):
-#     print(f"Class {i} train: {np.mean(y_train[:, i])}, test: {np.mean(y_test[:, i])}")
-# draw diagramma of class balance
-plt.plot(np.mean(y_train, axis=0), label="Train")
-plt.plot(np.mean(y_test, axis=0), label="Test")
-plt.legend()
-plt.show()
+def chek_balance(y_train, y_test, draw_plot=True, write_text=False):
+    if draw_plot:
+        plt.plot(np.mean(y_train, axis=0), label="Train")
+        plt.plot(np.mean(y_test, axis=0), label="Test")
+        plt.legend()
+        plt.show()
+
+    if write_text:
+        for i in range(26):
+            print(
+                f"Class {i} dif train: {np.mean(y_train[:, i]) - np.mean(y_test[:, i])}"
+            )
+chek_balance(y_train, y_test, draw_plot=True, write_text=False)
 
 
 # Cell: Define and Compile Model
