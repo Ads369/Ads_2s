@@ -27,12 +27,16 @@
 # 1. Спроектировать модель классификации отзывов к фильмам с точностью на валидационной выборке более 90%.
 # 2. Показать, что модель способна классифицировать отзывы с вероятностью более 88% на контрольной выборке.
 #
-# За успешное выполнение задания вы получите 3 балла. Если сможете преодолеть точность 95% на валидационной выборке и/или 93% на контрольной, то получите 4 балла.
+# За успешное выполнение задания вы получите 3 балла.
+# Если сможете преодолеть точность 95% на валидационной выборке
+# и/или 93% на контрольной, то получите 4 балла.
 #
 # Также вы можете получить дополнительно 1 балл, если выполните все предложенные задания в задаче о Титанике (17.1), проанализируете "увеличенную модель" (17.2).
 
 # %% pip
-#
+""" "
+!pip install scikeras
+"""
 
 # %% Import
 import re
@@ -44,7 +48,6 @@ import seaborn as sns
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import (
     GridSearchCV,
@@ -54,6 +57,8 @@ from sklearn.model_selection import (
 )
 from tensorflow.keras import layers, models, regularizers
 from tensorflow.keras.datasets import imdb
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.preprocessing.text import Tokenizer
 
 
 # %% Main
@@ -70,11 +75,14 @@ def time_execution(func):
 
 
 def preprocess_text(text):
+    # import nltk
+    # nltk.download("punkt_tab")
+    # nltk.download("stopwords")
+    # nltk.download("wordnet")
+
     # Remove special characters and digits
     text = re.sub(r"[^a-zA-Z\s]", "", text)
-    # Convert to lowercase
-    text = text.lower()
-    # # Tokenize
+    # Tokenize
     tokens = word_tokenize(text)
     # Remove stopwords
     tokens = [word for word in tokens if word not in stopwords.words("english")]
@@ -90,7 +98,7 @@ def resplit_dataset(train_data, test_data, train_labels, test_labels):
 
     # Resplit the data 80/20
     train_data, test_data, train_labels, test_labels = train_test_split(
-        all_data, all_labels, test_size=0.2, random_state=42
+        all_data, all_labels, test_size=0.4, random_state=42
     )
 
     return train_data, train_labels, test_data, test_labels
@@ -105,43 +113,98 @@ def draw_baance_plot(data_tuple):
     plt.show()
 
 
-def calculate_balance(data_tuple):
+def calculate_balance(data_tuple, do_print: bool = True):
     unique, counts = np.unique(data_tuple, return_counts=True)
     balance = dict(zip(unique, counts))
-    print("Balance of labels in training data:")
-    print(f"Totall: {len(data_tuple)}")
-    print(f"0 (Negative): {balance[0]}")
-    print(f"1 (Positive): {balance[1]}")
-    print(f"Ratio (Positive/Negative): {balance[1]/balance[0]:.2f}")
-    print("---")
+    pro_balance = balance[1] / balance[0]
+
+    if do_print:
+        print("Balance of labels in training data:")
+        print(f"Totall: {len(data_tuple)}")
+        print(f"0 (Negative): {balance[0]}")
+        print(f"1 (Positive): {balance[1]}")
+        print(f"Ratio (Positive/Negative): {pro_balance:.2f}")
+        print("---")
+
+    if pro_balance < 0.9:
+        raise ValueError("The ratio of positive to negative labels is too low.")
 
 
-# Load and preprocess data
-def load_and_preprocess_data():
+def parsing_review():
+    word_index = imdb.get_word_index()
+    reverse_word_index = dict([(value, key) for (key, value) in word_index.items()])
+
+    categories = tuple(word_index.keys())
+
+    def sequence_to_text(sequence):
+        return " ".join([reverse_word_index.get(i - 3, "?") for i in sequence])
+
+    def text_to_sequence(text):
+        return [word_index.get(word, 0) + 3 for word in text.split()]
+
+    print("start prepocessor")
+    preprocessed_data = []
+    for review in all_data:
+        text = sequence_to_text(review)
+        preprocessed_data.append(text_to_sequence(text))
+        # preprocessed_data.append(text)
+
+    #     from sklearn.preprocessing import LabelEncoder
+    #     label_encoder = LabelEncoder()
+    #     text = label_encoder.fit_transform(categories)
+    #     # preprocessed_text = preprocess_text(text)
+    # preprocessed_data.append(text_to_sequence(preprocessed_text))
+
+    print("start tokening")
+    # Tokenize and pad sequences
+    # tokenizer = Tokenizer(num_words=DICT_SPACE)
+    # tokenizer.fit_on_texts(preprocessed_data)
+    # sequences = tokenizer.texts_to_sequences(preprocessed_data)
+    # x_data = pad_sequences(sequences)
+
+
+def vectorize_sequences(sequences, dimension=None):
+    if dimension is None:
+        dimension = DICT_SPACE
+
+    results = np.zeros((len(sequences), dimension))
+    for i, sequence in enumerate(sequences):
+        results[i, sequence] = 1.0  # Записываем единицы в элемент с данным индексом
+    return results
+
+
+def resplit_data(
+    train_data, train_labels, test_data, test_labels, test_size=0.2, random_state=42
+):
+    all_data = np.concatenate((train_data, test_data))
+    all_labels = np.concatenate((train_labels, test_labels))
+
+    train_data, test_data, train_labels, test_labels = train_test_split(
+        all_data, all_labels, test_size=test_size, random_state=random_state
+    )
+
+    return train_data, train_labels, test_data, test_labels
+
+
+def load_and_preprocess_data(test_size=None):
     (train_data, train_labels), (test_data, test_labels) = imdb.load_data(
         num_words=DICT_SPACE,
-        skip_top=20,
+        skip_top=SKIP_TOP,
     )
 
-    train_data, train_labels, test_data, test_labels = resplit_dataset(
-        train_data, test_data, train_labels, test_labels
-    )
+    if test_size is not None:
+        train_data, train_labels, test_data, test_labels = resplit_data(
+            train_data, train_labels, test_data, test_labels, test_size=test_size
+        )
 
+    # Vectorize for tanserflows
+    train_data = vectorize_sequences(train_data)
+    test_data = vectorize_sequences(test_data)
+    train_labels = np.asarray(train_labels).astype("float32")
+    test_labels = np.asarray(test_labels).astype("float32")
     calculate_balance(train_labels)
 
-    def vectorize_sequences(sequences, dimension=DICT_SPACE):
-        results = np.zeros((len(sequences), dimension))
-        for i, sequence in enumerate(sequences):
-            results[i, sequence] = 1.0
-        return results
-
-    x_train = vectorize_sequences(train_data)
-    x_test = vectorize_sequences(test_data)
-
-    y_train = np.asarray(train_labels).astype("float32")
-    y_test = np.asarray(test_labels).astype("float32")
-
-    return x_train, y_train, x_test, y_test
+    return train_data, train_labels, test_data, test_labels
 
 
 # Create model
@@ -163,10 +226,6 @@ def create_model(layer_size=None, dropout_rate=None):
                 layer_size, activation="relu", kernel_regularizer=regularizers.l2(0.001)
             ),
             layers.Dropout(dropout_rate),
-            # layers.Dense(
-            #     layer_size, activation="relu", kernel_regularizer=regularizers.l2(0.001)
-            # ),
-            # layers.Dropout(dropout_rate),
             layers.Dense(1, activation="sigmoid"),
         ]
     )
@@ -182,7 +241,7 @@ def train_model(model, x, y, x_val, y_val):
         epochs=EPOCHS,
         batch_size=BATCH_SIZE,
         validation_data=(x_val, y_val),
-        verbose=0,
+        verbose=VERBOSE_MODEL,
     )
     return history
 
@@ -220,10 +279,21 @@ def plot_history(history):
     plt.show()
 
 
+@time_execution
+def main_2():
+    x_train, y_train, x_test, y_test = load_and_preprocess_data()
+    print("Create model")
+    model = create_model()
+
+    print("Train model")
+    # history = model.fit(x_train, y_train, epochs=EPOCHS, batch_size=BATCH_SIZE, validation_split=0.1)
+    history = train_model(model, x_train, y_train, x_test, y_test)
+
+
 # Main execution
 @time_execution
 def main():
-    x_train, y_train, x_test, y_test = load_and_preprocess_data()
+    x_train, y_train, x_test, y_test = load_and_preprocess_data(test_size=0.2)
 
     kf = StratifiedKFold(n_splits=NUM_FOLDS, shuffle=True, random_state=42)
 
@@ -245,6 +315,7 @@ def main():
         _y_train, _y_val = y_train[train_index], y_train[val_index]
 
         model = create_model()
+
         history = train_model(model, _x_train, _y_train, _x_val, _y_val)
 
         # Обучение общей модели
@@ -269,6 +340,11 @@ def main():
             the_best_score = val_score
             the_best_history = history
 
+    # Case 3 - model
+    final_model = create_model()
+    new_history = train_model(final_model, x_train, y_train, x_test, y_test)
+    _, new_test_score = evaluate_model(final_model, x_test, y_test)
+
     print("\n---")
     print(f"\nMean accuracy: {np.mean(fold_scores):.4f}")
     print(f"The best accuracy: {the_best_score:.4f}")
@@ -277,8 +353,8 @@ def main():
     # CASE 1
     # Выбрать модель с наивысшим score в качестве окончательной модели.
     if the_best_model is not None and the_best_history is not None:
-        _, test_score = evaluate_model(the_best_model, x_test, y_test)
-        print(f"\nThe Best Model test accuracy: {test_score:.4f}")
+        _, best_test_score = evaluate_model(the_best_model, x_test, y_test)
+        print(f"\nThe Best Model test accuracy: {best_test_score:.4f}")
         print(
             f"Final validation accuracy: {the_best_history.history['val_accuracy'][-1]:.4f}"
         )
@@ -299,17 +375,14 @@ def main():
     # Case 3
     # Обучить новую модель на всём наборе данных, используя те же настройки (гиперпараметры),
     # что и при перекрестной проверке: то же число эпох и та же структура слоёв.
-    final_model = create_model()
-    _history = train_model(final_model, x_train, y_train, x_test, y_test)
-    _, test_score = evaluate_model(final_model, x_test, y_test)
-    print(f"\nThe New Model accuracy: {test_score:.4f}")
-    print(f"Final validation accuracy: {_history.history['val_accuracy'][-1]:.4f}")
+    print(f"\nThe New Model accuracy: {new_test_score:.4f}")
+    print(f"Final validation accuracy: {new_history.history['val_accuracy'][-1]:.4f}")
     print("---")
 
     # Case 4
     # Проверка одной, модели которая училась на K-fold'aх
-    _, test_score = evaluate_model(the_best_model, x_test, y_test)
-    print(f"\nThe Old Model test accuracy: {test_score:.4f}")
+    _, old_test_score = evaluate_model(the_best_model, x_test, y_test)
+    print(f"\nThe Old Model test accuracy: {old_test_score:.4f}")
     if old_history is not None:
         print(
             f"Final validation accuracy: {old_history.history['val_accuracy'][-1]:.4f}"
@@ -329,6 +402,9 @@ def main():
 
 
 # %% Cell grid search
+from scikeras.wrappers import KerasClassifier
+
+
 @time_execution
 def main_grid_search():
     x_train, y_train, x_test, y_test = load_and_preprocess_data()
@@ -393,24 +469,98 @@ def main_grid_search():
 SCORING = "accuracy"
 PRE_TRAINED_MODEL_NAME = "bert-base-cased"
 MAX_LEN = 400
+DICT_SPACE = 10000
+SKIP_TOP = 2
+VERBOSE_MODEL = 0
 
 # It's  good work don't touch
 # EPOCHS = 10
 # BATCH_SIZE = 128
 # DICT_SPACE = 10000
-# NUM_FOLDS = 5
+# NUM_FOLDS = 10
 # LAYER_SIZE = 16
 # DROPOUT_RATE = 0.5
 
 # Experemental zone
 EPOCHS = 10
 BATCH_SIZE = 128
-DICT_SPACE = 20000
-NUM_FOLDS = 5
+NUM_FOLDS = 10
 LAYER_SIZE = 32
 DROPOUT_RATE = 0.5
 
+
 # %% Run
 main()
+# main_2()
 # main_grid_search()
 # load_and_preprocess_data()
+
+# %% markdown
+# Проведя исследования
+#
+# Гиперпараметры котороые я получил ручным перебором
+# EPOCHS = 10
+# BATCH_SIZE = 128
+# NUM_FOLDS = 5
+# LAYER_SIZE = 16
+# DROPOUT_RATE = 0.5
+#
+# Гипер параметры которые я получили с помощью GridSearchCV
+# EPOCHS = 10
+# BATCH_SIZE = 128
+# NUM_FOLDS = 5
+# LAYER_SIZE = 32
+# DROPOUT_RATE = 0.5
+#
+# Mean accuracy: 0.8780
+# The best accuracy: 0.8834
+# ---
+# The Best Model test accuracy: 0.8706
+# Final validation accuracy: 0.8834
+# ---
+# Итоговый score (accuracy): 0.878
+# ---
+# The New Model accuracy: 0.8706
+# Final validation accuracy: 0.8705
+# ---
+# The Old Model test accuracy: 0.8706
+# Final validation accuracy: 0.9058
+#
+# Однако полученного результата не достаточно что-бы выполнить ДЗ
+#
+# При ресайзе 80/20 значения я получаю следующие значения
+# Mean accuracy: 0.8821
+# The best accuracy: 0.8884
+# ---
+# The Best Model test accuracy: 0.8838
+# Final validation accuracy: 0.8884
+# ---
+# Итоговый score (accuracy): 0.8821
+# ---
+# The New Model accuracy: 0.8838
+# Final validation accuracy: 0.8892
+# ---
+# The Old Model test accuracy: 0.8838
+# Final validation accuracy: 0.8986
+# ---
+#
+# Я хотел попробовать реализовать обработку строк:
+# - У даление часто повторяющихся слов
+# - Удаление не нужных символов
+# - Приведене слов в простой форме
+# Но с данной задачей ни мой ПК ни Colab справиться не может
+# Мой финальный результат
+# Mean accuracy: 0.8857
+# The best accuracy: 0.8950
+# ---
+# The Best Model test accuracy: 0.8882
+# Final validation accuracy: 0.8950
+# ---
+# Итоговый score (accuracy): 0.885675
+# ---
+# The New Model accuracy: 0.8882
+# Final validation accuracy: 0.8899
+# ---
+# The Old Model test accuracy: 0.8882
+# Final validation accuracy: 0.9115
+# ---
