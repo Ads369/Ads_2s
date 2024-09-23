@@ -69,7 +69,7 @@
 
 # %% [markdown]
 # # # @title Загрузка набора данных и обучение модели
-
+#
 # !wget https://storage.yandexcloud.net/academy.ai/cat-and-dog.zip
 # # Разархивируем датасета во временную папку 'temp'
 # !unzip -qo "cat-and-dog" -d ./temp
