@@ -61,17 +61,16 @@
 # class_mode='categorical'
 # ```
 #
-# Также необходимо вспомнить какую функцию ошибки использовать с задачей многоклассовой классификации. Можно попробовать в качестве оптимизатора использовать Adam с разными шагами.
+# Также необходимо вспомнить какую функцию ошибки использовать с задачей многоклассовой классификации.
+# Можно попробовать в качестве оптимизатора использовать Adam с разными шагами.
 #
 # Также обратите внимание, что вместо слоя `Flatten()`, вам предлагается использовать `GlobalAveragePooling2D()` (https://keras.io/api/layers/pooling_layers/global_average_pooling2d/).
 #
 
 
-# %% [markdown]
+# %%
 # # # @title Загрузка набора данных и обучение модели
-#
 # !wget https://storage.yandexcloud.net/academy.ai/cat-and-dog.zip
-# # Разархивируем датасета во временную папку 'temp'
 # !unzip -qo "cat-and-dog" -d ./temp
 
 
@@ -135,7 +134,9 @@ test_dir = os.path.join(BASE_DIR, "test")
 os.mkdir(test_dir)
 
 # %% cell
-conv_base = VGG16(weights="imagenet", include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+conv_base = VGG16(
+    weights="imagenet", include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)
+)
 
 
 # Функция создания подвыборок (папок с файлами)
@@ -197,7 +198,8 @@ def extract_features(directory, sample_count):
         directory,  # путь к папке
         target_size=(IMG_WIDTH, IMG_HEIGHT),  # изменить картинки до размера 150 х 150
         batch_size=batch_size,  # размер пакета
-        class_mode="binary",  # задача бинарной классификации
+        # class_mode="binary",  # задача бинарной классификации
+        class_mode="categorical",
     )
     i = 0
     for (
@@ -231,13 +233,13 @@ test_features, test_labels = extract_features(test_dir, 2000)
 
 # %%
 train_features = np.reshape(
-    train_features, (2000, 4 * 4 * 512)
+    train_features, (8000, 4 * 4 * 512)
 )  # приводим к форме (образцы, 8192) обучающие признаки
 validation_features = np.reshape(
-    validation_features, (1000, 4 * 4 * 512)
+    validation_features, (8000, 4 * 4 * 512)
 )  # приводим к форме (образцы, 8192) проверочные признаки
 test_features = np.reshape(
-    test_features, (1000, 4 * 4 * 512)
+    test_features, (2000, 4 * 4 * 512)
 )  # приводим к форме (образцы, 8192) тестовые признаки
 
 # %%
@@ -258,12 +260,20 @@ test_datagen = ImageDataGenerator(rescale=1.0 / 255)
 
 # генерация картинок из папки для обучающей выборки
 train_generator = train_datagen.flow_from_directory(
-    train_dir, target_size=(IMG_WIDTH, IMG_HEIGHT), batch_size=20, class_mode="binary"
+    train_dir,
+    target_size=(IMG_WIDTH, IMG_HEIGHT),
+    batch_size=20,
+    class_mode="categorical",
+    # class_mode="binary"
 )
 
 # генерация картинок из папки для проверочной выборки
 validation_generator = test_datagen.flow_from_directory(
-    validation_dir, target_size=(IMG_WIDTH, IMG_HEIGHT), batch_size=20, class_mode="binary"
+    validation_dir,
+    target_size=(IMG_WIDTH, IMG_HEIGHT),
+    batch_size=20,
+    class_mode="categorical",
+    # class_mode="binary"
 )
 
 
@@ -288,11 +298,17 @@ def model_maker():
 model = model_maker()
 
 # компиляция модели
+# model.compile(
+#     loss="binary_crossentropy",
+#     optimizer=optimizers.RMSprop(learning_rate=2e-5),
+#     metrics=["acc"],
+# )
 model.compile(
-    loss="binary_crossentropy",
-    optimizer=optimizers.RMSprop(learning_rate=2e-5),
-    metrics=["acc"],
+    loss="categorical_crossentropy",
+    optimizer=optimizers.Adam(learning_rate=1e-4),
+    metrics=["accuracy"],
 )
+
 
 # обучаем модель
 history = model.fit(
@@ -356,7 +372,11 @@ plt.show()
 
 # %%
 test_generator = test_datagen.flow_from_directory(
-    test_dir, target_size=(150, 150), batch_size=20, class_mode="binary"
+    test_dir,
+    target_size=(150, 150),
+    batch_size=20,
+    class_mode="categorical",
+    # class_mode="binary"
 )
 
 test_loss, test_acc = model.evaluate(test_generator, steps=50)
