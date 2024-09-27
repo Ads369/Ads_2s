@@ -161,3 +161,6 @@ cython_debug/
 .DS_Store
 quiz_bot_serverless
 assets
+ipynb/Урок 18/cat-and-dog.zip
+ipynb/Урок 18/temp
+ipynb/Урок 18/dataset

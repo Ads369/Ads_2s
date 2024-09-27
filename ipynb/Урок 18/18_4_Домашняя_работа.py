@@ -134,9 +134,28 @@ test_dir = os.path.join(BASE_DIR, "test")
 os.mkdir(test_dir)
 
 # %% cell
-conv_base = VGG16(
-    weights="imagenet", include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)
-)
+# conv_base = VGG16(
+#     weights="imagenet", include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3)
+# )
+
+
+def model_maker():
+    base_model = MobileNet(include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+
+    for layer in base_model.layers[:]:
+        layer.trainable = False
+
+    input = Input(shape=(IMG_WIDTH, IMG_HEIGHT, 3))
+    custom_model = base_model(input)
+    custom_model = GlobalAveragePooling2D()(custom_model)
+    custom_model = Dense(64, activation="relu")(custom_model)
+    custom_model = Dropout(0.5)(custom_model)
+    predictions = Dense(CLASS_COUNT, activation="softmax")(custom_model)
+
+    return Model(inputs=input, outputs=predictions)
+
+
+model = model_maker()
 
 
 # Функция создания подвыборок (папок с файлами)
@@ -206,16 +225,17 @@ def extract_features(directory, sample_count):
         inputs_batch,
         labels_batch,
     ) in generator:  # в цикле пошагово генерируем пакет с картинками и пакет из меток
-        features_batch = conv_base.predict(
-            inputs_batch, verbose=0
+        features_batch = model.predict(
+            inputs_batch, verbose="0"
         )  # делаем предсказание на сгенерируемом пакете
         features[i * batch_size : (i + 1) * batch_size] = (
             features_batch  # складываем пакеты с признаками пачками в массив с признаками
         )
 
-        labels[i * batch_size : (i + 1) * batch_size] = (
-            labels_batch  # складываем пакеты с метками в массив с метками
-        )
+        # labels[i * batch_size : (i + 1) * batch_size] = (
+        #     labels_batch  # складываем пакеты с метками в массив с метками
+        # )
+        labels[i * batch_size : (i + 1) * batch_size] = labels_batch[:, 0]
         i += 1
 
         if (
@@ -278,24 +298,6 @@ validation_generator = test_datagen.flow_from_directory(
 
 
 # %%
-def model_maker():
-    base_model = MobileNet(include_top=False, input_shape=(IMG_WIDTH, IMG_HEIGHT, 3))
-
-    for layer in base_model.layers[:]:
-        layer.trainable = False
-
-    input = Input(shape=(IMG_WIDTH, IMG_HEIGHT, 3))
-    custom_model = base_model(input)
-    custom_model = GlobalAveragePooling2D()(custom_model)
-    custom_model = Dense(64, activation="relu")(custom_model)
-    custom_model = Dropout(0.5)(custom_model)
-    predictions = Dense(CLASS_COUNT, activation="softmax")(custom_model)
-
-    return Model(inputs=input, outputs=predictions)
-
-
-# %%
-model = model_maker()
 
 # компиляция модели
 # model.compile(
@@ -308,7 +310,6 @@ model.compile(
     optimizer=optimizers.Adam(learning_rate=1e-4),
     metrics=["accuracy"],
 )
-
 
 # обучаем модель
 history = model.fit(
