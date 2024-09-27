@@ -225,17 +225,13 @@ def extract_features(directory, sample_count):
         inputs_batch,
         labels_batch,
     ) in generator:  # в цикле пошагово генерируем пакет с картинками и пакет из меток
-        features_batch = model.predict(
-            inputs_batch, verbose="0"
-        )  # делаем предсказание на сгенерируемом пакете
-        features[i * batch_size : (i + 1) * batch_size] = (
-            features_batch  # складываем пакеты с признаками пачками в массив с признаками
-        )
+        features_batch = model.predict(inputs_batch, verbose=0)
+        # делаем предсказание на сгенерируемом пакете
+        features[i * batch_size : (i + 1) * batch_size] = features_batch
+        # складываем пакеты с признаками пачками в массив с признаками
 
-        # labels[i * batch_size : (i + 1) * batch_size] = (
-        #     labels_batch  # складываем пакеты с метками в массив с метками
-        # )
         labels[i * batch_size : (i + 1) * batch_size] = labels_batch[:, 0]
+        # складываем пакеты с метками в массив с метками
         i += 1
 
         if (
