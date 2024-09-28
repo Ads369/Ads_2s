@@ -156,6 +156,7 @@ def model_maker():
 
 
 model = model_maker()
+model.summary()
 
 
 # Функция создания подвыборок (папок с файлами)
@@ -208,7 +209,8 @@ batch_size = 20  # Размер батча (20 изображений)
 # Функция извлечения признаков
 def extract_features(directory, sample_count):
     # определяем размерность признаков, заполняем нулями
-    features = np.zeros(shape=(sample_count, 4, 4, 512))
+    # features = np.zeros(shape=(sample_count, 4, 4, 512))
+    features = np.zeros(shape=(sample_count, *model.output_shape[1:]))
     # определяем размерность выходных меток, заполняем нулями
     labels = np.zeros(shape=(sample_count))
 
