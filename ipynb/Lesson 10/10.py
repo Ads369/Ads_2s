@@ -36,7 +36,7 @@ import tensorflow_datasets as tfds
 from matplotlib import pyplot as plt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import PassiveAggressiveClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix,
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, PolynomialFeatures, StandardScaler
 from xgboost import XGBClassifier
@@ -53,7 +53,7 @@ from xgboost import XGBClassifier
 # !wget https://storage.yandexcloud.net/academy.ai/practica/fake_news.csv
 
 # %%
-data = pd.read_csv("../assets/fake_news.csv")
+data = pd.read_csv("fake_news.csv")
 data = data.dropna()
 data["text"] = data["title"] + "\n" + data["text"]
 
@@ -68,6 +68,7 @@ x_train, x_test, y_train, y_test = train_test_split(
 
 
 # %%
+# Calculate balance
 mapping = {"REAL": 1, "FAKE": 0}
 for k, v in mapping.items():
     x = np.mean(y_train == k)
@@ -87,13 +88,8 @@ pac = PassiveAggressiveClassifier(max_iter=50)
 pac.fit(tfidf_train, y_train)
 
 # %%
-# Сделаем предсказания и оценим точность модели
-y_pred = pac.predict(tfidf_test)
-score = accuracy_score(y_test, y_pred)
-print(f"Accuracy: {round(score*100, 2)}%")
-
-# %%
 # Построим и визуализируем матрицу ошибок
+y_pred = pac.predict(tfidf_test)
 conf_mat = confusion_matrix(y_test, y_pred, labels=["FAKE", "REAL"])
 sns.heatmap(
     conf_mat,
@@ -141,7 +137,13 @@ plt.show()
 # %%
 data_numeric = data.select_dtypes(include=[np.number])
 plt.figure(figsize=(8, 5))
-sns.heatmap(data_numeric.corr(), annot=True, cmap="cubehelix_r", annot_kws={"size": 8}, fmt="0.1f")
+sns.heatmap(
+    data_numeric.corr(),
+    annot=True,
+    cmap="cubehelix_r",
+    annot_kws={"size": 8},
+    fmt="0.1f",
+)
 plt.show()
 
 # %%
@@ -152,6 +154,37 @@ y = data["status"]
 # %%
 # Разделение на обучающую и тестовую выборки
 x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)
+# %%
+# Calculate class balance for train and test sets
+unique_train, counts_train = np.unique(y_train, return_counts=True)
+print("Training Set Class Distribution:")
+print(dict(zip(unique_train, counts_train)))
+
+# Check the balance in the test set
+unique_test, counts_test = np.unique(y_test, return_counts=True)
+print("\nTest Set Class Distribution:")
+print(dict(zip(unique_test, counts_test)))
+
+train_balance = y_train.value_counts(normalize=True)
+test_balance = y_test.value_counts(normalize=True)
+print("Train set class balance:")
+print(train_balance)
+print("\nTest set class balance:")
+print(test_balance)
+# %%
+
+# Visualize class balance
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+train_balance.plot(kind="bar")
+plt.title("Train Set Class Balance")
+plt.ylabel("Proportion")
+plt.subplot(1, 2, 2)
+test_balance.plot(kind="bar")
+plt.title("Test Set Class Balance")
+plt.tight_layout()
+plt.show()
+
 
 # %%
 # Стандартизация данных
@@ -164,14 +197,24 @@ x_test = scaler.transform(x_test)
 model = XGBClassifier()
 model.fit(x_train, y_train)
 
-# %%
-# Предсказания на тестовой выборке
-y_pred = model.predict(x_test)
 
 # %%
-# Оценка точности модели
-accuracy = accuracy_score(y_test, y_pred)
-print(f"Accuracy: {round(accuracy * 100, 2)}%")
+# Построим и визуализируем матрицу ошибок
+y_pred = model.predict(x_test)
+print(y_pred)
+conf_mat = confusion_matrix(y_test, y_pred, labels=[0, 1])
+sns.heatmap(
+    conf_mat,
+    annot=True,
+    fmt="d",
+    cmap="Blues",
+    xticklabels=[0, 1],
+    yticklabels=[0, 1],
+)
+plt.xlabel("Predicted labels")
+plt.ylabel("True labels")
+plt.title("Confusion Matrix")
+plt.show()
 
 # %% [markdown]
 # ---
