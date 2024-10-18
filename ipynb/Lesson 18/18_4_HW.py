@@ -89,6 +89,10 @@ from keras import (
 )
 from keras.applications import VGG16, MobileNet
 from keras.layers import Dense, Dropout, GlobalAveragePooling2D, Input
+from tensorflow import keras
+from tensorflow.keras.applications import MobileNet
+from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D, Input
+from tensorflow.keras.models import Model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # %% cell
@@ -99,39 +103,88 @@ IMG_WIDTH = 150
 IMG_HEIGHT = 150
 
 # Папка в которой будем создавать выборки
-BASE_DIR = "./dataset/"
-
-# Определение списка имен классов
+DATASET_DIR = "./dataset/"
 CLASS_LIST = sorted(os.listdir(IMAGE_PATH))
-
-# Определение количества классов
 CLASS_COUNT = len(CLASS_LIST)
 
 # При повторном запуске пересоздаим структуру каталогов
 # Если папка существует, то удаляем ее со всеми вложенными каталогами и файлами
-if os.path.exists(BASE_DIR):
-    shutil.rmtree(BASE_DIR)
+if os.path.exists(DATASET_DIR):
+    shutil.rmtree(DATASET_DIR)
 
 # Создаем папку по пути BASE_DIR
-os.mkdir(BASE_DIR)
+os.mkdir(DATASET_DIR)
 
 # Сцепляем путь до папки с именем вложенной папки. Аналогично BASE_DIR + '/train'
-train_dir = os.path.join(BASE_DIR, "train")
+train_dir = os.path.join(DATASET_DIR, "train")
+validation_dir = os.path.join(DATASET_DIR, "validation")
+test_dir = os.path.join(DATASET_DIR, "test")
 
-# Создаем подпапку, используя путь
 os.mkdir(train_dir)
-
-# Сцепляем путь до папки с именем вложенной папки. Аналогично BASE_DIR + '/validation'
-validation_dir = os.path.join(BASE_DIR, "validation")
-
-# Создаем подпапку, используя путь
 os.mkdir(validation_dir)
-
-# Сцепляем путь до папки с именем вложенной папки. Аналогично BASE_DIR + '/test'
-test_dir = os.path.join(BASE_DIR, "test")
-
-# Создаем подпапку, используя путь
 os.mkdir(test_dir)
+
+
+data_files = []  # Cписок путей к файлам изображений
+data_labels = []  # Список меток классов
+
+# %% cell
+for class_label in range(CLASS_COUNT):
+    class_name = CLASS_LIST[class_label]  # Выборка имени класса из списка имен
+    class_path = IMAGE_PATH + class_name  # Полный путь к папке с изображениями класса
+
+    # Получение списка имен файлов с изображениями текущего класса
+    class_files = os.listdir(class_path)
+
+    # Вывод информации о численности класса
+    print(f"Размер класса {class_name} составляет {len(class_files)} животных")
+
+    # Добавление к общему списку всех файлов класса с добавлением родительского пути
+    data_files += [f"{class_path}/{file_name}" for file_name in class_files]
+
+    # Добавление к общему списку меток текущего класса - их ровно столько, сколько файлов в классе
+    data_labels += [class_label] * len(class_files)
+
+print("Общий размер базы для обучения:", len(data_labels))
+
+# %% cell
+
+# Функция создания подвыборок (папок с файлами)
+def create_dataset(
+    img_path: str,  # Путь к файлам с изображениями классов
+    new_path: str,  # Путь к папке с выборками
+    class_name: str,  # Имя класса (оно же и имя папки)
+    start_index: int = 0,  # Стартовый индекс изображения, с которого начинаем подвыборку
+    end_index: int = -1,  # Конечный индекс изображения, до которого создаем подвыборку
+):
+    src_path = os.path.join(img_path, class_name)
+    dst_path = os.path.join(new_path, class_name)
+
+    # Получение списка имен файлов с изображениями текущего класса
+    class_files = os.listdir(src_path)
+
+    # Создаем подпапку, используя путь
+    os.mkdir(dst_path)
+
+    # Перебираем элементы, отобранного списка с начального по конечный индекс
+    for fname in class_files[start_index:end_index]:
+        # Путь к файлу (источник)
+        src = os.path.join(src_path, fname)
+        # Новый путь расположения файла (назначение)
+        dst = os.path.join(dst_path, fname)
+        # Копируем файл из источника в новое место (назначение)
+        shutil.copyfile(src, dst)
+
+
+for class_label in range(
+    CLASS_COUNT
+):  # Перебор по всем классам по порядку номеров (их меток)
+    class_name = CLASS_LIST[class_label]  # Выборка имени класса из списка имен
+
+    create_dataset(IMAGE_PATH, train_dir, class_name, 0)
+    create_dataset(IMAGE_PATH, validation_dir, class_name, 0)
+    create_dataset(IMAGE_PATH_TEST, test_dir, class_name, 0)
+
 
 # %% cell
 # conv_base = VGG16(
@@ -157,110 +210,6 @@ def model_maker():
 
 model = model_maker()
 model.summary()
-
-
-# Функция создания подвыборок (папок с файлами)
-def create_dataset(
-    img_path: str,  # Путь к файлам с изображениями классов
-    new_path: str,  # Путь к папке с выборками
-    class_name: str,  # Имя класса (оно же и имя папки)
-    start_index: int = 0,  # Стартовый индекс изображения, с которого начинаем подвыборку
-    end_index: int = -1,  # Конечный индекс изображения, до которого создаем подвыборку
-):
-    src_path = os.path.join(
-        img_path, class_name
-    )  # Полный путь к папке с изображениями класса
-    dst_path = os.path.join(
-        new_path, class_name
-    )  # Полный путь к папке с новым датасетом класса
-
-    # Получение списка имен файлов с изображениями текущего класса
-    class_files = os.listdir(src_path)
-
-    # Создаем подпапку, используя путь
-    os.mkdir(dst_path)
-
-    # Перебираем элементы, отобранного списка с начального по конечный индекс
-    for fname in class_files[start_index:end_index]:
-        # Путь к файлу (источник)
-        src = os.path.join(src_path, fname)
-        # Новый путь расположения файла (назначение)
-        dst = os.path.join(dst_path, fname)
-        # Копируем файл из источника в новое место (назначение)
-        shutil.copyfile(src, dst)
-
-
-for class_label in range(
-    CLASS_COUNT
-):  # Перебор по всем классам по порядку номеров (их меток)
-    class_name = CLASS_LIST[class_label]  # Выборка имени класса из списка имен
-
-    create_dataset(IMAGE_PATH, train_dir, class_name, 0, 4000)
-    create_dataset(IMAGE_PATH, validation_dir, class_name, 0, 4000)
-    create_dataset(IMAGE_PATH_TEST, test_dir, class_name, 0, 1000)
-
-# %% cell
-datagen = ImageDataGenerator(
-    rescale=1.0 / 255
-)  # Задаем генератор и нормализуем данные делением на 255
-batch_size = 20  # Размер батча (20 изображений)
-
-
-# Функция извлечения признаков
-def extract_features(directory, sample_count):
-    # определяем размерность признаков, заполняем нулями
-    # features = np.zeros(shape=(sample_count, 4, 4, 512))
-    features = np.zeros(shape=(sample_count, *model.output_shape[1:]))
-    # определяем размерность выходных меток, заполняем нулями
-    labels = np.zeros(shape=(sample_count))
-
-    # генерируем данные из папки
-    generator = datagen.flow_from_directory(
-        directory,  # путь к папке
-        target_size=(IMG_WIDTH, IMG_HEIGHT),  # изменить картинки до размера 150 х 150
-        batch_size=batch_size,  # размер пакета
-        # class_mode="binary",  # задача бинарной классификации
-        class_mode="categorical",
-    )
-    i = 0
-    for (
-        inputs_batch,
-        labels_batch,
-    ) in generator:  # в цикле пошагово генерируем пакет с картинками и пакет из меток
-        features_batch = model.predict(inputs_batch, verbose=0)
-        # делаем предсказание на сгенерируемом пакете
-        features[i * batch_size : (i + 1) * batch_size] = features_batch
-        # складываем пакеты с признаками пачками в массив с признаками
-
-        labels[i * batch_size : (i + 1) * batch_size] = labels_batch[:, 0]
-        # складываем пакеты с метками в массив с метками
-        i += 1
-
-        if (
-            i * batch_size >= sample_count
-        ):  # Прерываем генерацию, когда выходим за число желаемых примеров
-            break
-
-    return features, labels  # возвращаем кортеж (признаки, метки)
-
-
-# Извлекаем (признаки, метки)
-train_features, train_labels = extract_features(train_dir, 8000)
-validation_features, validation_labels = extract_features(validation_dir, 8000)
-test_features, test_labels = extract_features(test_dir, 2000)
-
-# %%
-train_features = np.reshape(
-    train_features, (8000, 4 * 4 * 512)
-)  # приводим к форме (образцы, 8192) обучающие признаки
-validation_features = np.reshape(
-    validation_features, (8000, 4 * 4 * 512)
-)  # приводим к форме (образцы, 8192) проверочные признаки
-test_features = np.reshape(
-    test_features, (2000, 4 * 4 * 512)
-)  # приводим к форме (образцы, 8192) тестовые признаки
-
-# %%
 
 # генератор для обучающей выборки
 train_datagen = ImageDataGenerator(
