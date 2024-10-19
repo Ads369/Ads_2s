@@ -92,7 +92,6 @@ print(f"Удалено изображений: {num_skipped}")
 
 train_ds, val_ds = keras.utils.image_dataset_from_directory(
     IMAGE_PATH,  # путь к папке с данными
-    test_s
     validation_split=0.2,  # отщепляем 20% на проверочную выборку
     subset="both",  # указываем, что необходимо вернуть кортеж из обучающей и проверочной выборок ("training", "validation" или "both")
     seed=42,  # воспроизводимость результата генерации (результаты с одинаковым числом - одинаковы),
