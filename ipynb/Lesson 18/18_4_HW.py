@@ -168,9 +168,7 @@ def create_dataset(
 
     # Перебираем элементы, отобранного списка с начального по конечный индекс
     for fname in class_files[start_index:end_index]:
-        # Путь к файлу (источник)
         src = os.path.join(src_path, fname)
-        # Новый путь расположения файла (назначение)
         dst = os.path.join(dst_path, fname)
         # Копируем файл из источника в новое место (назначение)
         shutil.copyfile(src, dst)
@@ -231,7 +229,6 @@ train_generator = train_datagen.flow_from_directory(
     target_size=(IMG_WIDTH, IMG_HEIGHT),
     batch_size=20,
     class_mode="categorical",
-    # class_mode="binary"
 )
 
 # генерация картинок из папки для проверочной выборки
@@ -240,7 +237,6 @@ validation_generator = test_datagen.flow_from_directory(
     target_size=(IMG_WIDTH, IMG_HEIGHT),
     batch_size=20,
     class_mode="categorical",
-    # class_mode="binary"
 )
 
 
