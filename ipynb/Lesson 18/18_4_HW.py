@@ -11,7 +11,7 @@
 #     name: python3
 # ---
 
-# %% [markdown] id="view-in-github" colab_type="text"
+# %% [markdown] colab_type="text" id="view-in-github"
 # <a href="https://colab.research.google.com/github/Ads369/Ads_2s/blob/main/18_4_%D0%94%D0%BE%D0%BC%D0%B0%D1%88%D0%BD%D1%8F%D1%8F_%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%B0.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 # %% [markdown] id="6rS32nxCMMVV"
