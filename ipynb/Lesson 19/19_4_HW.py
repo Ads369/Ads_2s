@@ -43,7 +43,7 @@
 # !unzip -qo "stanford_dogs" -d ./dataset
 
 # Папка с папками картинок, рассортированных по категориям
-IMAGE_PATH = "./dataset/"
+IMAGE_PATH_SOURCE = "./dataset/"
 
 # %% id="CWESaQ6yKviE"
 import keras
@@ -52,6 +52,7 @@ print(keras.__version__)
 
 # %%
 import os
+import random
 
 import keras
 import matplotlib.pyplot as plt
@@ -68,8 +69,8 @@ TEST_BATCH = 1
 
 # %%
 num_skipped = 0  # счетчик поврежденных файлов
-for folder_name in os.listdir(IMAGE_PATH):  # перебираем папки
-    folder_path = os.path.join(IMAGE_PATH, folder_name)  # склеиваем путь
+for folder_name in os.listdir(IMAGE_PATH_SOURCE):  # перебираем папки
+    folder_path = os.path.join(IMAGE_PATH_SOURCE, folder_name)  # склеиваем путь
     for fname in os.listdir(folder_path):  # получаем список файлов в папке
         fpath = os.path.join(folder_path, fname)  # получаем путь до файла
         try:
@@ -89,6 +90,23 @@ for folder_name in os.listdir(IMAGE_PATH):  # перебираем папки
 print(f"Удалено изображений: {num_skipped}")
 
 # %%
+# Определяем список имен классов
+CLASS_LIST = sorted(os.listdir(IMAGE_PATH_SOURCE))
+SELECTED_CLASSES = random.sample(CLASS_LIST, 10)
+
+# Определяем количества классов
+CLASS_COUNT = len(SELECTED_CLASSES)
+
+IMAGE_PATH = [
+    os.path.join(IMAGE_PATH_SOURCE, class_name) for class_name in SELECTED_CLASSES
+]
+
+# Вывод результата
+print(f"Количество всех классов: {len(CLASS_LIST)}")
+print(f"Количество выбраных классов: {CLASS_COUNT}")
+print(f"Метки классов: {SELECTED_CLASSES}")
+
+# %%
 
 train_ds, val_ds = keras.utils.image_dataset_from_directory(
     IMAGE_PATH,  # путь к папке с данными
@@ -102,16 +120,6 @@ train_ds, val_ds = keras.utils.image_dataset_from_directory(
 test_ds = train_ds.take(TEST_BATCH)
 train_ds = train_ds.skip(TEST_BATCH)
 
-# %%
-# Определяем список имен классов
-CLASS_LIST = sorted(os.listdir(IMAGE_PATH))
-
-# Определяем количества классов
-CLASS_COUNT = len(CLASS_LIST)
-
-# Вывод результата
-print(f"Количество классов: {CLASS_COUNT}")
-print(f"Метки классов: {CLASS_LIST}")
 
 # %%
 plt.figure(figsize=(10, 10))
@@ -119,7 +127,7 @@ for images, labels in train_ds.take(1):  # берем первый батч об
     for i in range(16):  # отрисуем первые 16 картинок батча
         ax = plt.subplot(4, 4, i + 1)
         plt.imshow(keras.utils.img_to_array(images[i]).astype("uint8"))
-        plt.title(CLASS_LIST[labels[i]])  # покажем метки
+        plt.title(SELECTED_CLASSES[labels[i]])  # покажем метки
         plt.axis("off")  # отключаем отображение осей
 
 # %%
@@ -149,7 +157,7 @@ for images, label in train_ds.take(1):
         plt.imshow(
             keras.utils.img_to_array(augmented_images).astype("uint8")
         )  # Преобразуем картинку в тензор, теперь уже без NumPy
-        plt.title("{}".format(CLASS_LIST[label[0]]))  # Вывод метки
+        plt.title("{}".format(SELECTED_CLASSES[label[0]]))  # Вывод метки
         plt.axis("off")
 
 # %%
@@ -250,14 +258,13 @@ from tensorflow.keras.models import load_model
 model = load_model("best_model_pretrain.keras")
 
 # %%
-# for images, labels in train_ds.take(1):  # берем первый батч обучающей выборки
 for images, labels in test_ds.take(1):  # берем первый батч обучающей выборки
     for i in range(10):  # отрисуем первые 16 картинок батча
         img_array = keras.utils.img_to_array(images[i])
         img_array = keras.ops.expand_dims(img_array, 0)
         predictions = model.predict(img_array)
         print(
-            f"Предсказание: {CLASS_LIST[keras.ops.argmax(predictions)]}\n"
-            f"Истинная порода: {CLASS_LIST[labels[i]]} \n"
+            f"Предсказание: {SELECTED_CLASSES[keras.ops.argmax(predictions)]}\n"
+            f"Истинная порода: {SELECTED_CLASSES[labels[i]]} \n"
             f"Вероятность: {keras.ops.max(predictions) * 100}"
         )
