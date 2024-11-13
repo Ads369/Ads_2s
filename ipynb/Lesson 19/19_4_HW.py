@@ -97,9 +97,22 @@ SELECTED_CLASSES = random.sample(CLASS_LIST, 10)
 # Определяем количества классов
 CLASS_COUNT = len(SELECTED_CLASSES)
 
-IMAGE_PATH = [
-    os.path.join(IMAGE_PATH_SOURCE, class_name) for class_name in SELECTED_CLASSES
-]
+# Create a new directory for selected classes
+IMAGE_PATH = "./dataset_selected/"
+os.makedirs(IMAGE_PATH, exist_ok=True)
+
+# Copy selected classes to new directory
+for class_name in SELECTED_CLASSES:
+    src_path = os.path.join(IMAGE_PATH_SOURCE, class_name)
+    dst_path = os.path.join(IMAGE_PATH, class_name)
+    if os.path.exists(dst_path):
+        continue
+    os.makedirs(dst_path, exist_ok=True)
+    for file_name in os.listdir(src_path):
+        src_file = os.path.join(src_path, file_name)
+        dst_file = os.path.join(dst_path, file_name)
+        os.symlink(os.path.abspath(src_file), dst_file)
+
 
 # Вывод результата
 print(f"Количество всех классов: {len(CLASS_LIST)}")
@@ -107,7 +120,7 @@ print(f"Количество выбраных классов: {CLASS_COUNT}")
 print(f"Метки классов: {SELECTED_CLASSES}")
 
 # %%
-
+# Normalize path to string
 train_ds, val_ds = keras.utils.image_dataset_from_directory(
     IMAGE_PATH,  # путь к папке с данными
     validation_split=0.2,  # отщепляем 20% на проверочную выборку
@@ -242,6 +255,7 @@ callbacks = [
 
 model = build_model(num_classes=CLASS_COUNT)
 
+# Harper is a grammer checker that is
 
 history = model.fit(
     train_ds, epochs=epochs, validation_data=val_ds, callbacks=callbacks
