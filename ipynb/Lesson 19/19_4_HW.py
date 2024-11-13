@@ -102,6 +102,7 @@ IMAGE_PATH = "./dataset_selected/"
 os.makedirs(IMAGE_PATH, exist_ok=True)
 
 # Copy selected classes to new directory
+# qwe
 for class_name in SELECTED_CLASSES:
     src_path = os.path.join(IMAGE_PATH_SOURCE, class_name)
     dst_path = os.path.join(IMAGE_PATH, class_name)
