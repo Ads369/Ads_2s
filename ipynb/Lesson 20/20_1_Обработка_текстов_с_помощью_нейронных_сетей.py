@@ -11,7 +11,7 @@
 #     name: python3
 # ---
 
-# %% [markdown] id="view-in-github" colab_type="text"
+# %% [markdown] colab_type="text" id="view-in-github"
 # <a href="https://colab.research.google.com/github/Ads369/Ads_2s/blob/main/20_1_%D0%9E%D0%B1%D1%80%D0%B0%D0%B1%D0%BE%D1%82%D0%BA%D0%B0_%D1%82%D0%B5%D0%BA%D1%81%D1%82%D0%BE%D0%B2_%D1%81_%D0%BF%D0%BE%D0%BC%D0%BE%D1%89%D1%8C%D1%8E_%D0%BD%D0%B5%D0%B9%D1%80%D0%BE%D0%BD%D0%BD%D1%8B%D1%85_%D1%81%D0%B5%D1%82%D0%B5%D0%B9.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 # %% [markdown] id="eC_jcuKOn-pX"
