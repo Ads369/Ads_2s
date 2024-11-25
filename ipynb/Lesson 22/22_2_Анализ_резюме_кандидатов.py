@@ -11,7 +11,7 @@
 #     name: python3
 # ---
 
-# %% [markdown] id="view-in-github" colab_type="text"
+# %% [markdown] colab_type="text" id="view-in-github"
 # <a href="https://colab.research.google.com/github/Ads369/Ads_2s/blob/main/22_2_%D0%90%D0%BD%D0%B0%D0%BB%D0%B8%D0%B7_%D1%80%D0%B5%D0%B7%D1%8E%D0%BC%D0%B5_%D0%BA%D0%B0%D0%BD%D0%B4%D0%B8%D0%B4%D0%B0%D1%82%D0%BE%D0%B2.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
 # %% [markdown] id="Oh5y9k76hVn5"
@@ -75,7 +75,7 @@ import json
 # %% [markdown] id="K9VwbXqmimwl"
 # Далее мы загружаем облегченную версию датасета. Порядок и набор полей сохранен как в оригинальном датасете.
 
-# %% id="JgEFjaeyKGjf" colab={"base_uri": "https://localhost:8080/"} outputId="2aca5c70-7f39-4fcc-85c7-465cae811ba7"
+# %% colab={"base_uri": "https://localhost:8080/"} id="JgEFjaeyKGjf" outputId="2aca5c70-7f39-4fcc-85c7-465cae811ba7"
 # !wget https://storage.yandexcloud.net/academy.ai/cv_100000.csv
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="3aW4tAhacRK-" outputId="c67e1a14-aa8d-4f76-af6a-5ad64a108ffe"
@@ -654,12 +654,12 @@ tokenizer = Tokenizer(
 # Построение частотного словаря по текстам с опытом работы
 tokenizer.fit_on_texts(df['works'])
 
-# %% id="6Gs_hZa8Y6RX" colab={"base_uri": "https://localhost:8080/"} outputId="1eb5820f-59b7-42ce-d0c2-8f85e7f2e211"
+# %% colab={"base_uri": "https://localhost:8080/"} id="6Gs_hZa8Y6RX" outputId="1eb5820f-59b7-42ce-d0c2-8f85e7f2e211"
 items = list(tokenizer.word_index.items())       # Получение индексов слов
 print(items[:50])                                # Посмотр 50 самых часто встречающихся слов
 print("Размер словаря", len(items))              # Длина словаря
 
-# %% id="6seOHdiuY-pY" colab={"base_uri": "https://localhost:8080/"} outputId="2b0b1323-c6a0-4c49-f992-ad1dd6f6bb59"
+# %% colab={"base_uri": "https://localhost:8080/"} id="6seOHdiuY-pY" outputId="2b0b1323-c6a0-4c49-f992-ad1dd6f6bb59"
 # Преобразование текстов в последовательность индексов согласно частотному словарю
 works_seq = tokenizer.texts_to_sequences(df['works'])
 
@@ -704,12 +704,12 @@ tokenizer = Tokenizer(
 # Мы используем принудительное преобразование данных к строке, чтобы избежать ошибок в случае пропуска данных
 tokenizer.fit_on_texts(df['positionName'].apply(str))
 
-# %% colab={"base_uri": "https://localhost:8080/"} outputId="794da3c1-50a1-4f9d-f664-bc70a700ae5d" id="o6QJZBtwc49k"
+# %% colab={"base_uri": "https://localhost:8080/"} id="o6QJZBtwc49k" outputId="794da3c1-50a1-4f9d-f664-bc70a700ae5d"
 items = list(tokenizer.word_index.items())       # Получение индексов слов
 print(items[:50])                                # Посмотр 50 самых часто встречающихся слов
 print("Размер словаря", len(items))              # Длина словаря
 
-# %% colab={"base_uri": "https://localhost:8080/"} outputId="bba90458-f088-4e3f-e04a-88d0ebecbcb5" id="1v1elf4Xc49k"
+# %% colab={"base_uri": "https://localhost:8080/"} id="1v1elf4Xc49k" outputId="bba90458-f088-4e3f-e04a-88d0ebecbcb5"
 # Преобразование текстов в последовательность индексов согласно частотному словарю
 position_seq = tokenizer.texts_to_sequences(df['positionName'].apply(str))
 
@@ -938,7 +938,7 @@ history = model.fit([x_train[:8000], x_train_position[:8000]],
 # %% [markdown] id="i1mWEDv-9Skn"
 # **Визуализируем результат обучения**
 
-# %% id="eHULwjQrW0aj" colab={"base_uri": "https://localhost:8080/", "height": 449} outputId="57a5b3ad-697d-45c0-dc0d-c24f05387569"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 449} id="eHULwjQrW0aj" outputId="57a5b3ad-697d-45c0-dc0d-c24f05387569"
 plt.plot(history.history['mae'], label='Средняя абсолютная ошибка на обучающем наборе')
 plt.plot(history.history['val_mae'], label='Средняя абсолютная ошибка на проверочном наборе')
 plt.xlabel('Эпоха обучения')
@@ -946,7 +946,7 @@ plt.ylabel('Средняя абсолютная ошибка')
 plt.legend()
 plt.show()
 
-# %% id="wsS2lmS2W_a5" colab={"base_uri": "https://localhost:8080/", "height": 773} outputId="936974b2-5ea7-49c8-c86b-b938fb36662e"
+# %% colab={"base_uri": "https://localhost:8080/", "height": 773} id="wsS2lmS2W_a5" outputId="936974b2-5ea7-49c8-c86b-b938fb36662e"
 pred = model.predict([x_train[8000:8100], x_train_position[8000:8100]])  # Предсказание на новых данных (контрольный образец)
 
 pred = y_scaler.inverse_transform(pred)    # Обратная нормированию процедура
