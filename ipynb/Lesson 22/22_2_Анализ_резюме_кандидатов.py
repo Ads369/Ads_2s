@@ -31,6 +31,14 @@
 
 # %% id="_pVP7VJubG8f"
 # Для работы с массивами данных
+# Для преобразования строки в json формат
+import json
+
+# Регулярные выражения
+import re
+
+# Для работы с графиками
+import matplotlib.pyplot as plt
 import numpy as np
 
 # Для работы с табличными данными
@@ -39,33 +47,40 @@ import pandas as pd
 # Библиотека утилит
 from keras import utils
 
-# Для работы с моделями
-from keras.models import Sequential, Model
-
 # Слои
-from keras.layers import Dense, Dropout, SpatialDropout1D, BatchNormalization, Embedding, Flatten, Activation, Input, concatenate
-from keras.layers import SimpleRNN, GRU, LSTM, Bidirectional, Conv1D, MaxPooling1D, GlobalMaxPooling1D
+from keras.layers import (
+    GRU,
+    LSTM,
+    Activation,
+    BatchNormalization,
+    Bidirectional,
+    Conv1D,
+    Dense,
+    Dropout,
+    Embedding,
+    Flatten,
+    GlobalMaxPooling1D,
+    Input,
+    MaxPooling1D,
+    SimpleRNN,
+    SpatialDropout1D,
+    concatenate,
+)
+
+# Для работы с моделями
+from keras.models import Model, Sequential
 
 # Оптимизаторы
-from keras.optimizers import Adam, Adadelta, SGD, Adagrad, RMSprop
+from keras.optimizers import SGD, Adadelta, Adagrad, Adam, RMSprop
 
-# Токенизатор
-from tensorflow.keras.preprocessing.text import Tokenizer
+# Метрики для расчета ошибок
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 # Нормализация данных
 from sklearn.preprocessing import StandardScaler
 
-# Регулярные выражения
-import re
-
-# Для работы с графиками
-import matplotlib.pyplot as plt
-
-# Метрики для расчета ошибок
-from sklearn.metrics import mean_squared_error, mean_absolute_error
-
-# Для преобразования строки в json формат
-import json
+# Токенизатор
+from tensorflow.keras.preprocessing.text import Tokenizer
 
 # %matplotlib inline
 
@@ -80,10 +95,12 @@ import json
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="3aW4tAhacRK-" outputId="c67e1a14-aa8d-4f76-af6a-5ad64a108ffe"
 # Чтение файла базы данных
-df = pd.read_csv('cv_100000.csv', delimiter='|', on_bad_lines='skip', low_memory=False, index_col=0)
+df = pd.read_csv(
+    "cv_100000.csv", delimiter="|", on_bad_lines="skip", low_memory=False, index_col=0
+)
 
 # Вывод количества резюме и числа признаков
-print('Форма данных: ', df.shape)
+print("Форма данных: ", df.shape)
 
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 1000} id="gc_bXDhhzqy6" outputId="5cfc41fb-75f6-41fc-be95-3158d5ba29b8"
@@ -94,13 +111,43 @@ df.head(10)
 # Удалим ненужные столбцы, чтобы не перегружать оперативную память при работе с данными:
 
 # %% id="LWBtQD_sOjSC"
-df.drop(['id', 'candidateId', 'stateRegionCode', 'locality', 'birthday', 'gender', 'dateCreate', 'dateModify',
-         'publishedDate', 'academicDegree', 'worldskills', 'worldskillsInspectionStatus', 'abilympicsInspectionStatus',
-         'abilympicsParticipation', 'volunteersInspectionStatus', 'volunteersParticipation', 'driveLicenses', 'professionsList',
-         'otherCertificates', 'narkCertificate', 'narkInspectionStatus', 'codeExternalSystem', 'country', 'additionalEducationList',
-         'hardSkills', 'softSkills', 'retrainingCapability', 'businessTrip', 'languageKnowledge', 'relocation', 'innerInfo'
-
-         ], inplace=True, axis=1)
+df.drop(
+    [
+        "id",
+        "candidateId",
+        "stateRegionCode",
+        "locality",
+        "birthday",
+        "gender",
+        "dateCreate",
+        "dateModify",
+        "publishedDate",
+        "academicDegree",
+        "worldskills",
+        "worldskillsInspectionStatus",
+        "abilympicsInspectionStatus",
+        "abilympicsParticipation",
+        "volunteersInspectionStatus",
+        "volunteersParticipation",
+        "driveLicenses",
+        "professionsList",
+        "otherCertificates",
+        "narkCertificate",
+        "narkInspectionStatus",
+        "codeExternalSystem",
+        "country",
+        "additionalEducationList",
+        "hardSkills",
+        "softSkills",
+        "retrainingCapability",
+        "businessTrip",
+        "languageKnowledge",
+        "relocation",
+        "innerInfo",
+    ],
+    inplace=True,
+    axis=1,
+)
 
 # %% [markdown] id="ZS10gGv1gYC_"
 # ## Обработка данных
@@ -111,9 +158,9 @@ df.drop(['id', 'candidateId', 'stateRegionCode', 'locality', 'birthday', 'gender
 # %% colab={"base_uri": "https://localhost:8080/"} id="kHTZOEW4foAa" outputId="b3aa813d-7898-4de1-fbdb-8f3a5275d2b9"
 # Пример данных
 
-n = 3                                     # Индекс в таблице резюме
-for i in range(len(df.values[n])):        # Вывод значения каждого столбца
-    print('{:>2} {:>30}  {}'.format(i, df.columns[i], df.values[n][i]))
+n = 3  # Индекс в таблице резюме
+for i in range(len(df.values[n])):  # Вывод значения каждого столбца
+    print("{:>2} {:>30}  {}".format(i, df.columns[i], df.values[n][i]))
 
 # %% [markdown] id="5UqW7tPZ7u8U"
 # Для наглядности представим в виде таблицы доступное на [портале](https://trudvsem.ru/opendata/datasets) описание полей атрибутов данного датасета в формате json.
@@ -222,32 +269,37 @@ for i in range(len(df.values[n])):        # Вывод значения кажд
 # Удалим все резюме, в которых не указана ожидаемая должность и размер зарплаты.
 
 # %% id="pzoO6O4XpZPQ"
-df = df[df['salary'].notna()]
-df = df[df['positionName'].notna()]
+df = df[df["salary"].notna()]
+df = df[df["positionName"].notna()]
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="nREjw7wjoy2A" outputId="9f160d2f-cf86-461c-b406-c8edee7a88b2"
 df.info()
 
 
-# %% [markdown] id="4ctVVdpX0OYd"
-# Некоторые колонки имеют формат JSON (вложенная структура), сохраненные как текст. Чтобы с ними работать нам необходимо их преобразовать из текста в JSON:
+# %% [markdown] id="4ctVVdpX0OYd" Некоторые колонки имеют формат JSON (вложенная
+# структура), сохраненные как текст. Чтобы с ними работать нам необходимо их
+# преобразовать из текста в JSON:
+
 
 # %% id="7EPspvxPxugR"
 def load_json(js):
-  try:
-    return json.loads(js)
-  except:
-    return  []
+    try:
+        return json.loads(js)
+    except:
+        return []
 
 
 # %% id="wNwj6COpUsYS"
-df['workExperienceList']      = df['workExperienceList'].apply(load_json)
-df['educationList']           = df['educationList'].apply(load_json)
+df["workExperienceList"] = df["workExperienceList"].apply(load_json)
+df["educationList"] = df["educationList"].apply(load_json)
 
-# %% [markdown] id="pD-rehzygPw7"
-# Мы видим, что в таблице 40 столбцов. В качестве целевого параметра, который будет предсказывать нейронная сеть, выберем колонку со значением желаемой зарплаты `salary`.
+# %% [markdown] id="pD-rehzygPw7" Мы видим, что в таблице 40 столбцов. В качестве
+# целевого параметра, который будет предсказывать нейронная сеть, выберем колонку
+# со значением желаемой зарплаты `salary`.
 #
-# Теперь нам необходимо из датасета извлечь данные, которые мы считаем значимыми для обучения модели, и представить их в формате пригодном для обучения нашей модели.
+# Теперь нам необходимо из датасета извлечь данные, которые мы считаем значимыми
+# для обучения модели, и представить их в формате пригодном для обучения нашей
+# модели.
 
 # %% [markdown] id="D4OCu9QjAkYN"
 # ### Извлечение классов из данных
@@ -255,37 +307,44 @@ df['educationList']           = df['educationList'].apply(load_json)
 # %% [markdown] id="l46VnZUVAuGB"
 # #### Извлечение города
 
-# %% [markdown] id="dEJifftjBXit"
-# Нам необходимо научиться извлекать из данных город проживания нашего соискателя, так как в разных регионах страны будут разные уровни зарплат и, соответственно, разные ожидания у соискателей. Города разделим на 4 класса: Москва, Санкт-Петербург, города-миллионники и остальные города. А также учтем варианты написания городов, а точнее областей, в датасете.  
+# %% [markdown] id="dEJifftjBXit" Нам необходимо научиться извлекать из данных
+# город проживания нашего соискателя, так как в разных регионах страны будут
+# разные уровни зарплат и, соответственно, разные ожидания у соискателей. Города
+# разделим на 4 класса: Москва, Санкт-Петербург, города-миллионники и остальные
+# города. А также учтем варианты написания городов, а точнее областей, в датасете.
 
 # %% id="wEepw_7sAugE"
-city_class =  {'Московская-область'          : 0,
-               'г-Москва'                    : 0,
-               'Ленинградская-область'       : 1,
-               'г-Санкт-Петербург'           : 1,
-               'Новосибирская-область'       : 2,
-               'Свердловская-область'        : 2,
-               'Татарстан-республика'        : 2,
-               'Нижегородская-область'       : 2,
-               'Красноярский-край'           : 2,
-               'Челябинская-область'         : 2,
-               'Самарская-область'           : 2,
-               'Башкортостан-республика'     : 2,
-               'Ростовская-область'          : 2,
-               'Краснодарский-край'          : 2,
-               'Омская-область'              : 2,
-               'Воронежская-область'         : 2,
-               'Пермский-край'               : 2,
-               'Волгоградская-область'       : 2,
-               'Прочие-города'               : 3
-              }
+city_class = {
+    "Московская-область": 0,
+    "г-Москва": 0,
+    "Ленинградская-область": 1,
+    "г-Санкт-Петербург": 1,
+    "Новосибирская-область": 2,
+    "Свердловская-область": 2,
+    "Татарстан-республика": 2,
+    "Нижегородская-область": 2,
+    "Красноярский-край": 2,
+    "Челябинская-область": 2,
+    "Самарская-область": 2,
+    "Башкортостан-республика": 2,
+    "Ростовская-область": 2,
+    "Краснодарский-край": 2,
+    "Омская-область": 2,
+    "Воронежская-область": 2,
+    "Пермский-край": 2,
+    "Волгоградская-область": 2,
+    "Прочие-города": 3,
+}
 
 
-# %% [markdown] id="EHbokpXNEpWX"
-# Ранее мы обсуждали, что НС хорошо работают с данными представленными в формате `one hot encoding` (`OHE`), поэтому распределим данные по категориям городов соискателей и получим вектора распределения `OHE`.
+# %% [markdown] id="EHbokpXNEpWX" Ранее мы обсуждали, что НС хорошо работают с
+# данными представленными в формате `one hot encoding` (`OHE`), поэтому
+# распределим данные по категориям городов соискателей и получим вектора
+# распределения `OHE`.
 
 # %% id="FOpzG-AgDB0Q"
 #  Преобразование информации о городе в one hot encoding
+
 
 def city2OHE(param):
     # Определение размерности выходного вектора, как число уникальных классов
@@ -297,7 +356,7 @@ def city2OHE(param):
         param = list(city_class.keys())[-1]
 
     # Разбиваем строку на слова
-    split_array = re.split(r'[ ,.:()?!]', param)
+    split_array = re.split(r"[ ,.:()?!]", param)
 
     # Поиск города в строке и присвоение ему класса
     for word in split_array:
@@ -321,8 +380,8 @@ def city2OHE(param):
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="V7RSLOizDC-M" outputId="c16642cc-056a-41b8-8b98-3c4be917bf84"
 N = 8
-print('Наименование населенного пункта: ', df.localityName[N])
-print('Наименование населенного пункта в формате OHE:', city2OHE(df.localityName[N]))
+print("Наименование населенного пункта: ", df.localityName[N])
+print("Наименование населенного пункта в формате OHE:", city2OHE(df.localityName[N]))
 
 # %% [markdown] id="msaUSdIFLv4C"
 # ### Извлечение возраста и стажа
@@ -341,19 +400,19 @@ experience_class = [1, 3, 5, 7, 10, 15]
 # %% [markdown] id="viqDTJW4534Q"
 # Определим универсальную функцию перевода числа в диапазон OHE:
 
+
 # %% id="V6vaQD936Ne3"
 def range2OHE(param, class_list):
-
-   # Определение размерности выходного вектора, как число уникальных классов
-    num_classes = len(class_list)+1
+    # Определение размерности выходного вектора, как число уникальных классов
+    num_classes = len(class_list) + 1
 
     # Поиск интервала для входного значения
     for i in range(num_classes - 1):
         if float(param) < class_list[i]:
-            cls = i                       # Интервал найден, выбор класса
+            cls = i  # Интервал найден, выбор класса
             break
     else:
-        cls = num_classes - 1             # Интервал не найден, выбор последнего класса
+        cls = num_classes - 1  # Интервал не найден, выбор последнего класса
 
     # Возврат в виде one hot encoding-вектора
     return utils.to_categorical(cls, num_classes)
@@ -361,11 +420,11 @@ def range2OHE(param, class_list):
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="VcG3wuig82SG" outputId="07fd749b-0ec5-4a14-f6c5-7e78264da415"
 N = 8
-print('Стаж работы: ', df.experience[N])
-print('Стаж работы в формате OHE: ',range2OHE(df.experience[N], experience_class))
+print("Стаж работы: ", df.experience[N])
+print("Стаж работы в формате OHE: ", range2OHE(df.experience[N], experience_class))
 
-print('Возраст соискателя: ', df.age[N])
-print('Возраст соискателя в формате OHE: ', range2OHE(df.age[N], age_class))
+print("Возраст соискателя: ", df.age[N])
+print("Возраст соискателя в формате OHE: ", range2OHE(df.age[N], age_class))
 
 # %% [markdown] id="LQarexL22Ohz"
 # ### Извлечение графика работы и типа занятости
@@ -377,7 +436,7 @@ print('Возраст соискателя в формате OHE: ', range2OHE(d
 # Для типа занятости, где возможно только одно значение список довольно лаконичный:
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="gO-zF9H8_6Hj" outputId="cb6ae9f6-3aaa-4004-9610-6c442aeb623d"
-df.busyType.apply(lambda x: x if isinstance(x, str) else 'Полная-занятость').unique()
+df.busyType.apply(lambda x: x if isinstance(x, str) else "Полная-занятость").unique()
 
 # %% [markdown] id="n1PZQAoQTSHZ"
 # Если занятость не задана, т.е. тип значения отличен от строки (`isinstance(x, str)`), тогда для таких значений проставляем тип `Полная-занятость`, считаем его значением по умолчанию.
@@ -386,19 +445,23 @@ df.busyType.apply(lambda x: x if isinstance(x, str) else 'Полная-заня�
 # В резюме соискателя может быть указано несколько различных типов графика работы:
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="ofaB_aGN_8Rm" outputId="c7ce25cf-533d-4a02-8a81-0f526abf2f8a"
-df.scheduleType.apply(lambda x: x if isinstance(x, str) else 'Полный-рабочий-день').unique()
+df.scheduleType.apply(
+    lambda x: x if isinstance(x, str) else "Полный-рабочий-день"
+).unique()
 
 # %% [markdown] id="2bS7oV_OC_Mw"
 # Извлечем уникальные значения:
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="D9nC8h0_IzJR" outputId="33569bb1-a6de-4338-f782-a3620b4c36f0"
-unique_list = df.scheduleType.apply(lambda x: x if isinstance(x, str) else 'Полный-рабочий-день').unique()
+unique_list = df.scheduleType.apply(
+    lambda x: x if isinstance(x, str) else "Полный-рабочий-день"
+).unique()
 
 shedule_list = []
 
 for uniq_str in unique_list:
-  row_array = uniq_str.replace(' ', '').split(',')
-  shedule_list = list(set(shedule_list + row_array))
+    row_array = uniq_str.replace(" ", "").split(",")
+    shedule_list = list(set(shedule_list + row_array))
 
 print(shedule_list)
 
@@ -411,32 +474,31 @@ print(shedule_list)
 # %% id="TpXdbhGV-bcM"
 # Типы занятости
 employment_class = {
-                    'Стажировка'          : 0,
-                    'Временная'           : 1,
-                    'Сезонная'            : 2,
-                    'Частичная-занятость' : 3,
-                    'Удаленная'           : 4,
-                    'Полная-занятость'    : 5
-                   }
+    "Стажировка": 0,
+    "Временная": 1,
+    "Сезонная": 2,
+    "Частичная-занятость": 3,
+    "Удаленная": 4,
+    "Полная-занятость": 5,
+}
 
 # Графики работы
 schedule_class = {
-                  'Сменный-график'              : 0,
-                  'Ненормированный-рабочий-день': 1,
-                  'Вахтовый-метод'              : 2,
-                  'Гибкий-график'               : 3,
-                  'Неполный-рабочий-день'       : 4,
-                  'Полный-рабочий-день'         : 5,
-
-                 }
+    "Сменный-график": 0,
+    "Ненормированный-рабочий-день": 1,
+    "Вахтовый-метод": 2,
+    "Гибкий-график": 3,
+    "Неполный-рабочий-день": 4,
+    "Полный-рабочий-день": 5,
+}
 
 
 # %% id="3JfDwaXuWU_a"
 # Общая функция преобразования строки к multi-вектору
 # На входе данные и словарь сопоставления подстрок классам
 
-def str2multiOHE(param, class_dict):
 
+def str2multiOHE(param, class_dict):
     # Определение размерности выходного вектора, как число уникальных классов
     num_classes = len(set(class_dict.values()))
 
@@ -451,7 +513,7 @@ def str2multiOHE(param, class_dict):
     # Поиск значения в словаре и, если нашли, то проставляем 1 в найденной позиции
     for value, cls in class_dict.items():
         if value in param:
-            result[cls] = 1.
+            result[cls] = 1.0
 
     return result
 
@@ -461,11 +523,11 @@ def str2multiOHE(param, class_dict):
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="kq1MXe87Xi4t" outputId="fb60ec70-2410-4a2d-a7b8-2c7e07918633"
 N = 154
-print('Тип занятости: ', df.busyType[N])
-print('Тип занятости в формате OHE: ', str2multiOHE(df.busyType[N], employment_class))
+print("Тип занятости: ", df.busyType[N])
+print("Тип занятости в формате OHE: ", str2multiOHE(df.busyType[N], employment_class))
 print()
-print('График работы: ', df.scheduleType[N])
-print('График работы в формате OHE: ', str2multiOHE(df.scheduleType[N], schedule_class))
+print("График работы: ", df.scheduleType[N])
+print("График работы в формате OHE: ", str2multiOHE(df.scheduleType[N], schedule_class))
 
 # %% [markdown] id="-iM6R6W6dv8A"
 # Если указано несколько значений, то в каждом классе, к которому подходят значения, проставляем `1`. `nan` в данном датасете означает незаполненное поле. Для таких полей задаем значение по умолчанию (последний класс в словаре).
@@ -478,29 +540,31 @@ print('График работы в формате OHE: ', str2multiOHE(df.sched
 
 # %% id="MsQeih6TnZ5A"
 # Фиксация индексов столбцов
-COL_LOCALITY     = df.columns.get_loc('localityName')
-COL_EXPERIENCE   = df.columns.get_loc('experience')
-COL_AGE          = df.columns.get_loc('age')
-COL_BUSY         = df.columns.get_loc('busyType')
-COL_SCHED        = df.columns.get_loc('scheduleType')
-COL_SALARY       = df.columns.get_loc('salary')
+COL_LOCALITY = df.columns.get_loc("localityName")
+COL_EXPERIENCE = df.columns.get_loc("experience")
+COL_AGE = df.columns.get_loc("age")
+COL_BUSY = df.columns.get_loc("busyType")
+COL_SCHED = df.columns.get_loc("scheduleType")
+COL_SALARY = df.columns.get_loc("salary")
 
 
 def get_row_data(row):
     # Объединение всех входных данных в один общий вектор
-    x_data = np.hstack([
-                city2OHE(row[COL_LOCALITY]),
-                range2OHE(row[COL_EXPERIENCE], experience_class),
-                range2OHE(row[COL_AGE], age_class),
-                str2multiOHE(row[COL_BUSY], employment_class),
-                str2multiOHE(row[COL_SCHED], schedule_class)
-              ])
+    x_data = np.hstack(
+        [
+            city2OHE(row[COL_LOCALITY]),
+            range2OHE(row[COL_EXPERIENCE], experience_class),
+            range2OHE(row[COL_AGE], age_class),
+            str2multiOHE(row[COL_BUSY], employment_class),
+            str2multiOHE(row[COL_SCHED], schedule_class),
+        ]
+    )
 
     # Вектор зарплат в тысячах рублей
     y_data = np.array([row[COL_SALARY]]) / 1000
 
-
     return x_data, y_data
+
 
 def get_train_data(dataFrame):
     x_data = []
@@ -514,7 +578,6 @@ def get_train_data(dataFrame):
     return np.array(x_data), np.array(y_data)
 
 
-
 # %% id="qnwaMvr3nWEB"
 # Формирование выборки из загруженного набора данных
 x_train, y_train = get_train_data(df)
@@ -526,29 +589,29 @@ x_train, y_train = get_train_data(df)
 # %% [markdown] id="-wsmR3ZB0XgN"
 # Сведения об образовании мы передадим в модель в виде текста, поэтому создадим новую колонку `education` в нашем наборе данных и поместим в нее сведения об учебном заведении, год окончания, факультет, специальность и полученная квалификация:
 
+
 # %% id="kOgHwLnm3sh1"
 def extract_education(param):
-  edu_text = []
-  for edu in param:
-    if edu.get('instituteName'):
-        edu_text.append(edu.get('instituteName'))
-        if  edu.get('qualification'):
-            edu_text.append(edu.get('qualification'))
-        if  edu.get('specialty'):
-            edu_text.append(edu.get('specialty'))
-        if  edu.get('faculty'):
-            edu_text.append(edu.get('faculty'))
-        if  edu.get('graduateYear'):
-            edu_text.append(str(edu.get('graduateYear')))
+    edu_text = []
+    for edu in param:
+        if edu.get("instituteName"):
+            edu_text.append(edu.get("instituteName"))
+            if edu.get("qualification"):
+                edu_text.append(edu.get("qualification"))
+            if edu.get("specialty"):
+                edu_text.append(edu.get("specialty"))
+            if edu.get("faculty"):
+                edu_text.append(edu.get("faculty"))
+            if edu.get("graduateYear"):
+                edu_text.append(str(edu.get("graduateYear")))
+
+    return ". ".join(edu_text)
 
 
-  return '. '.join(edu_text)
-
-
-df['education'] = df['educationList'].apply(extract_education)
+df["education"] = df["educationList"].apply(extract_education)
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 36} id="24CPCBzX5j80" outputId="b4d34a29-e050-4d24-a579-317b373b3f42"
-df['education'][5]
+df["education"][5]
 
 # %% [markdown] id="K4lD3cHX__J4"
 # Преобразуем текстовые данные в числовые для обучения нейросети:
@@ -558,25 +621,25 @@ df['education'][5]
 
 # Используется встроенный в Keras токенизатор для разбиения текста и построения частотного словаря
 tokenizer = Tokenizer(
-    num_words=3000,                                          # объем словаря
-    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\xa0', # убираемые из текста ненужные символы
-    lower=True,                                              # приведение слов к нижнему регистру
-    split=' ',                                               # разделитель слов
-    oov_token='unknown',                                     # токен для слов, которые не вошли в словарь
-    char_level=False                                         # разделяем по словам, а не по единичным символам
+    num_words=3000,  # объем словаря
+    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\xa0',  # убираемые из текста ненужные символы
+    lower=True,  # приведение слов к нижнему регистру
+    split=" ",  # разделитель слов
+    oov_token="unknown",  # токен для слов, которые не вошли в словарь
+    char_level=False,  # разделяем по словам, а не по единичным символам
 )
 
 # Построение частотного словаря по текстам образования
-tokenizer.fit_on_texts(df['education'])
+tokenizer.fit_on_texts(df["education"])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="89zH6MzB_VeS" outputId="3df0c88b-d5a8-45ca-85e8-6d9b6d2b99d2"
-items = list(tokenizer.word_index.items())       # Получение индексов слов
-print(items[:50])                                # Посмотр 50 самых часто встречающихся слов
-print("Размер словаря", len(items))              # Длина словаря
+items = list(tokenizer.word_index.items())  # Получение индексов слов
+print(items[:50])  # Посмотр 50 самых часто встречающихся слов
+print("Размер словаря", len(items))  # Длина словаря
 
 # %% id="32l_ER-S_YP8"
 # Преобразование текстов в последовательность индексов согласно частотному словарю
-education_seq = tokenizer.texts_to_sequences(df['education'])
+education_seq = tokenizer.texts_to_sequences(df["education"])
 
 # %% id="87sJTeSk_f7K"
 # Преобразование последовательностей индексов в bag of words
@@ -590,9 +653,9 @@ print(x_train_education[5][0:100])
 # %% colab={"base_uri": "https://localhost:8080/"} id="agtgG7X3_lBv" outputId="94ff7e69-bdc2-4966-8a77-0293ede9f953"
 # Проверка получившихся данных
 n = 5
-print(df['education'][n])                   # Данные об образовании в тексте
-print(education_seq[n])                     # Данные об образовании в индексах слов
-print(x_train_education[n][0:100])          # Данные об образовании в bag of words
+print(df["education"][n])  # Данные об образовании в тексте
+print(education_seq[n])  # Данные об образовании в индексах слов
+print(x_train_education[n][0:100])  # Данные об образовании в bag of words
 
 # %% id="xo_TszFy_s-W"
 # Освобождение памяти от промежуточных данных
@@ -609,71 +672,78 @@ del education_seq, tokenizer
 # https://docs.python.org/3/library/datetime.html - ссылка на документацию
 import datetime
 
+
 def extract_works(param):
-  edu_text = []
-  for edu in param:
-    if edu.get('companyName'):
-        edu_text.append(edu.get('companyName'))
-        if  edu.get('dateFrom') and edu.get('dateTo'):
-            # Преобразуем строку в формат даты и времени (дата увольнения)
-            dateT = datetime.datetime.strptime(edu.get('dateTo'), '%Y-%m-%dT%H:%M:%S%z')
+    edu_text = []
+    for edu in param:
+        if edu.get("companyName"):
+            edu_text.append(edu.get("companyName"))
+            if edu.get("dateFrom") and edu.get("dateTo"):
+                # Преобразуем строку в формат даты и времени (дата увольнения)
+                dateT = datetime.datetime.strptime(
+                    edu.get("dateTo"), "%Y-%m-%dT%H:%M:%S%z"
+                )
 
-            # Преобразуем строку в формат даты и времени (дата приема на работу)
-            dateF = datetime.datetime.strptime(edu.get('dateFrom'), '%Y-%m-%dT%H:%M:%S%z')
+                # Преобразуем строку в формат даты и времени (дата приема на работу)
+                dateF = datetime.datetime.strptime(
+                    edu.get("dateFrom"), "%Y-%m-%dT%H:%M:%S%z"
+                )
 
-            # разницу дат делим на число секунд в месяц
-            edu_text.append(f"Стаж {int((dateT - dateF).total_seconds() / 2628000) } месяцев")
+                # разницу дат делим на число секунд в месяц
+                edu_text.append(
+                    f"Стаж {int((dateT - dateF).total_seconds() / 2628000) } месяцев"
+                )
 
-        if  edu.get('jobTitle'):
-            edu_text.append(edu.get('jobTitle'))
-        if  edu.get('achievements'):
-            edu_text.append(edu.get('achievements'))
-        if  edu.get('demands'):
-            edu_text.append(edu.get('demands').replace('<p>', '').replace('</p>', ''))
+            if edu.get("jobTitle"):
+                edu_text.append(edu.get("jobTitle"))
+            if edu.get("achievements"):
+                edu_text.append(edu.get("achievements"))
+            if edu.get("demands"):
+                edu_text.append(
+                    edu.get("demands").replace("<p>", "").replace("</p>", "")
+                )
+
+    return ". ".join(edu_text)
 
 
+df["works"] = df["workExperienceList"].apply(extract_works)
 
-  return '. '.join(edu_text)
-
-
-df['works'] = df['workExperienceList'].apply(extract_works)
-
-df['works'][9]
+df["works"][9]
 
 # %% id="f7Z91646TODw"
 # Используется встроенный в Keras токенизатор для разбиения текста и построения частотного словаря
 tokenizer = Tokenizer(
-    num_words=3000,                                          # объем словаря
-    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\xa0', # убираемые из текста ненужные символы
-    lower=True,                                              # приведение слов к нижнему регистру
-    split=' ',                                               # разделитель слов
-    oov_token='unknown',                                     # токен для слов, которые не вошли в словарь
-    char_level=False                                         # разделяем по словам, а не по единичным символам
+    num_words=3000,  # объем словаря
+    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\xa0',  # убираемые из текста ненужные символы
+    lower=True,  # приведение слов к нижнему регистру
+    split=" ",  # разделитель слов
+    oov_token="unknown",  # токен для слов, которые не вошли в словарь
+    char_level=False,  # разделяем по словам, а не по единичным символам
 )
 
 # Построение частотного словаря по текстам с опытом работы
-tokenizer.fit_on_texts(df['works'])
+tokenizer.fit_on_texts(df["works"])
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="6Gs_hZa8Y6RX" outputId="1eb5820f-59b7-42ce-d0c2-8f85e7f2e211"
-items = list(tokenizer.word_index.items())       # Получение индексов слов
-print(items[:50])                                # Посмотр 50 самых часто встречающихся слов
-print("Размер словаря", len(items))              # Длина словаря
+items = list(tokenizer.word_index.items())  # Получение индексов слов
+print(items[:50])  # Посмотр 50 самых часто встречающихся слов
+print("Размер словаря", len(items))  # Длина словаря
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="6seOHdiuY-pY" outputId="2b0b1323-c6a0-4c49-f992-ad1dd6f6bb59"
 # Преобразование текстов в последовательность индексов согласно частотному словарю
-works_seq = tokenizer.texts_to_sequences(df['works'])
+works_seq = tokenizer.texts_to_sequences(df["works"])
 
 # Преобразование последовательностей индексов в bag of words
 x_train_works = tokenizer.sequences_to_matrix(works_seq)
 
-print('Форма обучающей выборке по опыту работы:', x_train_works.shape)
+print("Форма обучающей выборке по опыту работы:", x_train_works.shape)
 print()
 
 # Проверка получившихся данных
 n = 5
-print(df['works'][n])                      # Опыт работы в тексте
-print(works_seq[n])                        # Опыт работы в индексах слов
-print(x_train_works[n][0:100])             # Опыт работы в bag of words
+print(df["works"][n])  # Опыт работы в тексте
+print(works_seq[n])  # Опыт работы в индексах слов
+print(x_train_works[n][0:100])  # Опыт работы в bag of words
 
 # %% id="FQv6XnVgY_JR"
 # Освобождение памяти от промежуточных данных
@@ -687,43 +757,43 @@ del works_seq, tokenizer
 
 # %% id="GKZiSJRqR1Jh"
 
-pd.Series(df['positionName'].unique()).to_csv('test.csv')
+pd.Series(df["positionName"].unique()).to_csv("test.csv")
 
 # %% id="A0bHRAY5c49j"
 # Используется встроенный в Keras токенизатор для разбиения текста и построения частотного словаря
 tokenizer = Tokenizer(
-    num_words=3000,                                          # объем словаря
-    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\r\xa0', # убираемые из текста ненужные символы
-    lower=True,                                              # приведение слов к нижнему регистру
-    split=' ',                                               # разделитель слов
-    oov_token='unknown',                                     # токен для слов, которые не вошли в словарь
-    char_level=False                                         # разделяем по словам, а не по единичным символам
+    num_words=3000,  # объем словаря
+    filters='!"«»#$№%&()*+,-–—./:;<=>?@[\\]^_`{|}~\t\n\r\xa0',  # убираемые из текста ненужные символы
+    lower=True,  # приведение слов к нижнему регистру
+    split=" ",  # разделитель слов
+    oov_token="unknown",  # токен для слов, которые не вошли в словарь
+    char_level=False,  # разделяем по словам, а не по единичным символам
 )
 
 # Построение частотного словаря по текстам с опытом работы
 # Мы используем принудительное преобразование данных к строке, чтобы избежать ошибок в случае пропуска данных
-tokenizer.fit_on_texts(df['positionName'].apply(str))
+tokenizer.fit_on_texts(df["positionName"].apply(str))
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="o6QJZBtwc49k" outputId="794da3c1-50a1-4f9d-f664-bc70a700ae5d"
-items = list(tokenizer.word_index.items())       # Получение индексов слов
-print(items[:50])                                # Посмотр 50 самых часто встречающихся слов
-print("Размер словаря", len(items))              # Длина словаря
+items = list(tokenizer.word_index.items())  # Получение индексов слов
+print(items[:50])  # Посмотр 50 самых часто встречающихся слов
+print("Размер словаря", len(items))  # Длина словаря
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="1v1elf4Xc49k" outputId="bba90458-f088-4e3f-e04a-88d0ebecbcb5"
 # Преобразование текстов в последовательность индексов согласно частотному словарю
-position_seq = tokenizer.texts_to_sequences(df['positionName'].apply(str))
+position_seq = tokenizer.texts_to_sequences(df["positionName"].apply(str))
 
 # Преобразование последовательностей индексов в bag of words
 x_train_position = tokenizer.sequences_to_matrix(position_seq)
 
-print('Форма обучающей выборке по опыту работу:', x_train_position.shape)
+print("Форма обучающей выборке по опыту работу:", x_train_position.shape)
 print()
 
 # Проверка получившихся данных
 n = 5
-print(df['positionName'][n])                  # Опыт работы в тексте
-print(position_seq[n])                        # Опыт работы в индексах слов
-print(x_train_position[n][0:100])             # Опыт работы в bag of words
+print(df["positionName"][n])  # Опыт работы в тексте
+print(position_seq[n])  # Опыт работы в индексах слов
+print(x_train_position[n][0:100])  # Опыт работы в bag of words
 
 # %% id="lBWR143ac49k"
 # Освобождение памяти от промежуточных данных
@@ -791,11 +861,11 @@ x4 = Dropout(0.3)(x4)
 x = concatenate([x1, x2, x3, x4])
 
 # Промежуточный слой
-x = Dense(30, activation='relu')(x)
+x = Dense(30, activation="relu")(x)
 x = Dropout(0.5)(x)
 
 # Финальный регрессирующий нейрон
-x = Dense(1, activation='linear')(x)
+x = Dense(1, activation="linear")(x)
 
 # В Model передаются входы и выход
 model = Model((input1, input2, input3, input4), x)
@@ -820,14 +890,29 @@ utils.plot_model(model, dpi=96, show_shapes=True, show_layer_activations=True)
 # Обратите внимание, что `model.fit()` мы передаем в списке весь наш массив обучающих данных, в том же порядке, что мы определили в моделе `Model((input1, input2, input3, input4), x)`. В качестве функции потерь мы используем среднюю квадратичную ошибку (`mse`). В качестве метрики анализируем cреднюю абсолютную ошибку (`mae`), которая должна снижаться в процессе обучения.
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="w_oEW_Yd8djx" outputId="e8289ca8-5b85-4953-dcf3-613cf2f90fca"
-model.compile(optimizer=Adam(learning_rate=1e-5), loss='mse', metrics=['mae'])
+model.compile(optimizer=Adam(learning_rate=1e-5), loss="mse", metrics=["mae"])
 
-history = model.fit([x_train[:8000], x_train_education[:8000], x_train_works[:8000], x_train_position[:8000]],
-                           y_train_scaled[:8000],
-                           batch_size=256,
-                           epochs=100,
-                           validation_data=([x_train[8000:], x_train_education[8000:], x_train_works[8000:], x_train_position[8000:]], y_train_scaled[8000:]),
-                           verbose=1)
+history = model.fit(
+    [
+        x_train[:8000],
+        x_train_education[:8000],
+        x_train_works[:8000],
+        x_train_position[:8000],
+    ],
+    y_train_scaled[:8000],
+    batch_size=256,
+    epochs=100,
+    validation_data=(
+        [
+            x_train[8000:],
+            x_train_education[8000:],
+            x_train_works[8000:],
+            x_train_position[8000:],
+        ],
+        y_train_scaled[8000:],
+    ),
+    verbose=1,
+)
 
 # %% [markdown] id="dQxM46PD0Qbm"
 # **Визуализируем процесс обучения**
@@ -836,10 +921,12 @@ history = model.fit([x_train[:8000], x_train_education[:8000], x_train_works[:80
 # Средняя абсолютная ошибка показывает нам на сколько в абсолютных величинах ошибается наша модель. Если бы мы не нормализовали данные, то каждая точка на графике соответствовала бы среднему отклонению в тысячах рублей предсказанного значения от реального.
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 449} id="dBtC94118xw_" outputId="1aef8168-fc6c-4566-c050-c1bbb69342c7"
-plt.plot(history.history['mae'], label='Средняя абсолютная ошибка на обучающем наборе')
-plt.plot(history.history['val_mae'], label='Средняя абсолютная ошибка на проверочном наборе')
-plt.xlabel('Эпоха обучения')
-plt.ylabel('Средняя абсолютная ошибка')
+plt.plot(history.history["mae"], label="Средняя абсолютная ошибка на обучающем наборе")
+plt.plot(
+    history.history["val_mae"], label="Средняя абсолютная ошибка на проверочном наборе"
+)
+plt.xlabel("Эпоха обучения")
+plt.ylabel("Средняя абсолютная ошибка")
 plt.legend()
 plt.show()
 
@@ -851,23 +938,36 @@ plt.show()
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 773} id="DOiNFCS6_MlS" outputId="3cc00afd-3fc9-4d5e-957f-32ebdadd8fca"
 
-pred = model.predict([x_train[8000:8100], x_train_education[8000:8100], x_train_works[8000:8100], x_train_position[8000:8100]])
+pred = model.predict(
+    [
+        x_train[8000:8100],
+        x_train_education[8000:8100],
+        x_train_works[8000:8100],
+        x_train_position[8000:8100],
+    ]
+)
 
-pred = y_scaler.inverse_transform(pred)    # Обратная нормированию процедура
+pred = y_scaler.inverse_transform(pred)  # Обратная нормированию процедура
 
-print('Средняя абсолютная ошибка:', mean_absolute_error(pred, y_train[8000:8100]), '\n') # расчет средней абсолютной ошибки
+print(
+    "Средняя абсолютная ошибка:", mean_absolute_error(pred, y_train[8000:8100]), "\n"
+)  # расчет средней абсолютной ошибки
 
 for i in range(10):
-    print('Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}'.format(y_train[8000:8100][i, 0],
-                                                                                                pred[i, 0],
-                                                                                                abs(y_train[8000:8100][i, 0] - pred[i, 0])))
+    print(
+        "Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}".format(
+            y_train[8000:8100][i, 0],
+            pred[i, 0],
+            abs(y_train[8000:8100][i, 0] - pred[i, 0]),
+        )
+    )
 fig, ax = plt.subplots(figsize=(6, 6))
-ax.scatter(y_train[8000:8100], pred)          # Отрисовка точечного графика
-ax.set_xlim(0, 100)                           # Ограничение оси по x
-ax.set_ylim(0, 100)                           # Ограничение оси по x
-ax.plot(plt.xlim(), plt.ylim(), 'r')          # Отрисовка диагональной линии
-plt.xlabel('Правильные значения')
-plt.ylabel('Предсказания')
+ax.scatter(y_train[8000:8100], pred)  # Отрисовка точечного графика
+ax.set_xlim(0, 100)  # Ограничение оси по x
+ax.set_ylim(0, 100)  # Ограничение оси по x
+ax.plot(plt.xlim(), plt.ylim(), "r")  # Отрисовка диагональной линии
+plt.xlabel("Правильные значения")
+plt.ylabel("Предсказания")
 plt.grid()
 plt.show()
 
@@ -910,11 +1010,11 @@ x2 = Dropout(0.3)(x2)
 x = concatenate([x1, x2])
 
 # Промежуточный слой
-x = Dense(30, activation='relu')(x)
+x = Dense(30, activation="relu")(x)
 x = Dropout(0.5)(x)
 
 # Финальный регрессирующий нейрон
-x = Dense(1, activation='linear')(x)
+x = Dense(1, activation="linear")(x)
 
 # В Model передаются входы и выход
 model = Model((input1, input2), x)
@@ -926,51 +1026,63 @@ utils.plot_model(model, dpi=96, show_shapes=True, show_layer_activations=True)
 # **Обучим модель**
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="UEcg-N0qWkhM" outputId="cc6cc35a-5d96-4817-c77e-ec8b19549aab"
-model.compile(optimizer=Adam(learning_rate=1e-5), loss='mse', metrics=['mae'])
+model.compile(optimizer=Adam(learning_rate=1e-5), loss="mse", metrics=["mae"])
 
-history = model.fit([x_train[:8000], x_train_position[:8000]],
-                           y_train_scaled[:8000],
-                           batch_size=256,
-                           epochs=100,
-                           validation_data=([x_train[8000:], x_train_position[8000:]], y_train_scaled[8000:]),
-                           verbose=1)
+history = model.fit(
+    [x_train[:8000], x_train_position[:8000]],
+    y_train_scaled[:8000],
+    batch_size=256,
+    epochs=100,
+    validation_data=([x_train[8000:], x_train_position[8000:]], y_train_scaled[8000:]),
+    verbose=1,
+)
 
 # %% [markdown] id="i1mWEDv-9Skn"
 # **Визуализируем результат обучения**
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 449} id="eHULwjQrW0aj" outputId="57a5b3ad-697d-45c0-dc0d-c24f05387569"
-plt.plot(history.history['mae'], label='Средняя абсолютная ошибка на обучающем наборе')
-plt.plot(history.history['val_mae'], label='Средняя абсолютная ошибка на проверочном наборе')
-plt.xlabel('Эпоха обучения')
-plt.ylabel('Средняя абсолютная ошибка')
+plt.plot(history.history["mae"], label="Средняя абсолютная ошибка на обучающем наборе")
+plt.plot(
+    history.history["val_mae"], label="Средняя абсолютная ошибка на проверочном наборе"
+)
+plt.xlabel("Эпоха обучения")
+plt.ylabel("Средняя абсолютная ошибка")
 plt.legend()
 plt.show()
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 773} id="wsS2lmS2W_a5" outputId="936974b2-5ea7-49c8-c86b-b938fb36662e"
-pred = model.predict([x_train[8000:8100], x_train_position[8000:8100]])  # Предсказание на новых данных (контрольный образец)
+pred = model.predict(
+    [x_train[8000:8100], x_train_position[8000:8100]]
+)  # Предсказание на новых данных (контрольный образец)
 
-pred = y_scaler.inverse_transform(pred)    # Обратная нормированию процедура
+pred = y_scaler.inverse_transform(pred)  # Обратная нормированию процедура
 
 
-print('Средняя абсолютная ошибка:', mean_absolute_error(pred, y_train[8000:8100]), '\n') # расчет средней абсолютной ошибки
+print(
+    "Средняя абсолютная ошибка:", mean_absolute_error(pred, y_train[8000:8100]), "\n"
+)  # расчет средней абсолютной ошибки
 
 for i in range(10):
-    print('Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}'.format(y_train[8000:8100][i, 0],
-                                                                                                pred[i, 0],
-                                                                                                abs(y_train[8000:8100][i, 0] - pred[i, 0])))
+    print(
+        "Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}".format(
+            y_train[8000:8100][i, 0],
+            pred[i, 0],
+            abs(y_train[8000:8100][i, 0] - pred[i, 0]),
+        )
+    )
 fig, ax = plt.subplots(figsize=(6, 6))
 
-ax.scatter(y_train[8000:8100], pred)          # Отрисовка точечного графика
-ax.set_xlim(0, 100)                           # Ограничение оси по x
-ax.set_ylim(0, 100)                           # Ограничение оси по x
-ax.plot(plt.xlim(), plt.ylim(), 'r')          # Отрисовка диагональной линии
-plt.xlabel('Правильные значения')
-plt.ylabel('Предсказания')
+ax.scatter(y_train[8000:8100], pred)  # Отрисовка точечного графика
+ax.set_xlim(0, 100)  # Ограничение оси по x
+ax.set_ylim(0, 100)  # Ограничение оси по x
+ax.plot(plt.xlim(), plt.ylim(), "r")  # Отрисовка диагональной линии
+plt.xlabel("Правильные значения")
+plt.ylabel("Предсказания")
 plt.grid()
 plt.show()
 
 # %% [markdown] id="nC0qz0r4glN8"
-# Значение средней абсолютной ошибки в 10.4 для упрощенной модели, говорит о том, что наша модель в среднем ошибается на 10400, что немного лучше прежнего результата. Может показаться, что упрощенная модель лучше? Но это не совсем так. Более тяжелая модель с 4 ветками будет дольше обучаться. Тем более мы видим, что нет переобучения, что даже на 100 эпохах обе модели продолжают обучаться и дальше.  
+# Значение средней абсолютной ошибки в 10.4 для упрощенной модели, говорит о том, что наша модель в среднем ошибается на 10400, что немного лучше прежнего результата. Может показаться, что упрощенная модель лучше? Но это не совсем так. Более тяжелая модель с 4 ветками будет дольше обучаться. Тем более мы видим, что нет переобучения, что даже на 100 эпохах обе модели продолжают обучаться и дальше.
 
 # %% [markdown] id="Jq2QG-4YglDe"
 # На этом наше знакомство с регрессионными моделями подошло к концу и пора приступить к выполнению [домашней работы](https://colab.research.google.com/drive/1iPTkGZ_AEUpl5l6DR__J021gHR61RRfQ).

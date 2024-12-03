@@ -50,11 +50,6 @@ with open("japan_cars_dataset.csv", "wb") as f:
 import pandas as pd
 
 cars = pd.read_csv("japan_cars_dataset.csv", sep=",")
-
-# Удалим строки с пустыми значениями
-cars = cars.dropna()
-
-# Выводим первые 10 машин
 # cars.head(10)
 cars.info()
 
@@ -70,17 +65,31 @@ from keras.layers import Dense, Dropout, Input, concatenate
 from keras.models import Model
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
 
 # %% cell
 # Load and preprocess data
 def prepare_data(file_path):
-    # Read data
-    cars = pd.read_csv(file_path)
-    cars = cars.dropna()  # Remove rows with missing values
+    """
+    Prepare car data for neural network training.
 
-    # Create label encoders for categorical columns
+    Args:
+        file_path (str): Path to the CSV file
+
+    Returns:
+        tuple: Contains:
+            - categorical_encoded: One-hot encoded categorical features
+            - numerical_scaled: Scaled numerical features
+            - prices_scaled: Scaled target prices
+            - numerical_scaler: Scaler for numerical features
+            - price_scaler: Scaler for prices
+    """
+    # Read and clean data
+    cars = pd.read_csv(file_path)
+    cars = cars.dropna()
+
+    # Split features into categorical and numerical
     categorical_columns = [
         "mark",
         "model",
@@ -90,29 +99,31 @@ def prepare_data(file_path):
         "fuel",
     ]
     label_encoders = {}
-    encoded_categorical_data = []
+    categorical_encoded = []
+    numerical_columns = ["year", "mileage", "engine_capacity"]
 
-    for column in categorical_columns:
-        label_encoders[column] = LabelEncoder()
-        encoded_data = label_encoders[column].fit_transform(cars[column])
-        encoded_categorical_data.append(encoded_data)
+    categorical_features = cars[categorical_columns]
+    encoder = OneHotEncoder()
+    categorical_encoded = encoder.fit_transform(categorical_features)
 
-    # Combine categorical features
-    categorical_features = np.column_stack(encoded_categorical_data)
+    # for column in categorical_columns:
+    #     label_encoders[column] = LabelEncoder()
+    #     encoded_data = label_encoders[column].fit_transform(cars[column])
+    #     categorical_encoded.append(encoded_data)
 
-    # Prepare numerical features
-    numerical_features = cars[["year", "mileage", "engine_capacity"]].values
-
-    # Scale features
-    categorical_scaler = StandardScaler()
+    numerical_features = cars[numerical_columns]
     numerical_scaler = StandardScaler()
-    price_scaler = StandardScaler()
-
-    categorical_scaled = categorical_scaler.fit_transform(categorical_features)
     numerical_scaled = numerical_scaler.fit_transform(numerical_features)
+
+    price_scaler = StandardScaler()
     prices_scaled = price_scaler.fit_transform(cars[["price"]])
 
-    return categorical_scaled, numerical_scaled, prices_scaled, price_scaler
+    return (
+        categorical_encoded,
+        numerical_scaled,
+        prices_scaled,
+        price_scaler,
+    )
 
 
 # %% cell
@@ -143,26 +154,49 @@ def create_model(categorical_shape, numerical_shape):
     return model
 
 
+def split_data(dataset_parts, test_size=0.2):
+    """
+    Split data into training, validation and test sets.
+
+    Args:
+        dataset_parts (tuple): Tuple containing parts of dataset to split
+        test_size (float): Size of test set as fraction of total dataset (default 0.3)
+
+    Returns:
+        tuple: Split datasets with same order as input
+    """
+    train_parts = []
+    temp_parts = []
+    val_parts = []
+    test_parts = []
+
+    for part in dataset_parts:
+        train, temp = train_test_split(part, test_size=test_size, random_state=42)
+        train_parts.append(train)
+        temp_parts.append(temp)
+
+    for temp in temp_parts:
+        val, test = train_test_split(temp, test_size=0.5, random_state=42)
+        val_parts.append(val)
+        test_parts.append(test)
+
+    result = []
+    for train, val, test in zip(train_parts, val_parts, test_parts):
+        result.extend([train, val, test])
+
+    return tuple(result)
+
+
 # %% cell
 # # Training and evaluation
-def train_and_evaluate():
-    # Prepare data
-    categorical_data, numerical_data, prices, price_scaler = prepare_data(
-        "japan_cars_dataset.csv"
-    )
-
-    # Split data into train, validation, and test sets
-    # First split into train and temp
-    cat_train, cat_temp, num_train, num_temp, y_train, y_temp = train_test_split(
-        categorical_data, numerical_data, prices, test_size=0.3, random_state=42
-    )
-
-    # Split temp into validation and test
-    cat_val, cat_test, num_val, num_test, y_val, y_test = train_test_split(
-        cat_temp, num_temp, y_temp, test_size=0.5, random_state=42
-    )
-
-    # Create and compile model
+def train_and_evaluate(
+    categorical_data,
+    numerical_data,
+    y_train,
+    cat_val,
+    num_val,
+    y_val,
+):
     model = create_model(categorical_data.shape[1], numerical_data.shape[1])
     model.compile(optimizer=Adam(learning_rate=1e-4), loss="mse", metrics=["mae"])
 
@@ -171,7 +205,7 @@ def train_and_evaluate():
         [cat_train, num_train],
         y_train,
         validation_data=([cat_val, num_val], y_val),
-        epochs=100,
+        epochs=10,
         batch_size=32,
         verbose=1,
     )
@@ -184,7 +218,7 @@ def train_and_evaluate():
     mae = np.mean(np.abs(y_test - test_predictions))
     mape = np.mean(np.abs((y_test - test_predictions) / y_test)) * 100
 
-    print(f"\nTest Set Metrics:")
+    print("\nTest Set Metrics:")
     print(f"Mean Squared Error: {mse:.4f}")
     print(f"Mean Absolute Error: {mae:.4f}")
     print(f"Mean Absolute Percentage Error: {mape:.2f}%")
@@ -215,5 +249,42 @@ def train_and_evaluate():
 
 
 # %% cell
-## Run training and evaluation
-model, price_scaler, error_percentage = train_and_evaluate()
+# Prepare data
+categorical_data, numerical_data, prices, price_scaler = prepare_data(
+    "japan_cars_dataset.csv"
+)
+split_datasets = split_data([categorical_data, numerical_data, prices])
+
+# Unpack the split datasets
+cat_train, cat_val, cat_test = split_datasets[0:3]
+num_train, num_val, num_test = split_datasets[3:6]
+y_train, y_val, y_test = split_datasets[6:9]
+
+print(f"Training set size: {len(y_train)}")
+print(f"Validation set size: {len(y_val)}")
+print(f"Test set size: {len(y_test)}")
+
+# %% cell
+# Run training and evaluation
+model, price_scaler, error_percentage = train_and_evaluate(
+    cat_train, num_train, y_train, cat_val, num_val, y_val
+)
+
+
+# %% cell
+# Предсказание на новых данных (контрольный образец)
+pred_test = model.predict([cat_test, num_test])
+# %% cell
+print(pred_test)
+
+# %% cell
+for i in range(10):
+    x = y_test[i,0]
+    y = pred_test[i, 0]
+    print(
+        "Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}".format(
+            x,
+            y,
+            abs(x - y),
+        )
+    )
