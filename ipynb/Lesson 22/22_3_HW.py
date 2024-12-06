@@ -40,6 +40,7 @@
 
 # %% colab={"base_uri": "https://localhost:8080/"} id="BDCOnE5A7XiG" outputId="c6c455d1-0d56-4c8d-cdfd-a281ae0c0836"
 import requests
+from sklearn.metrics import mean_absolute_error
 
 url = "https://storage.yandexcloud.net/academy.ai/japan_cars_dataset.csv"
 response = requests.get(url)
@@ -196,6 +197,8 @@ def train_and_evaluate(
     cat_val,
     num_val,
     y_val,
+    epochs=10,
+    batch_size=32,
 ):
     model = create_model(categorical_data.shape[1], numerical_data.shape[1])
     model.compile(optimizer=Adam(learning_rate=1e-4), loss="mse", metrics=["mae"])
@@ -205,8 +208,8 @@ def train_and_evaluate(
         [cat_train, num_train],
         y_train,
         validation_data=([cat_val, num_val], y_val),
-        epochs=10,
-        batch_size=32,
+        epochs=epochs,
+        batch_size=batch_size,
         verbose=1,
     )
 
@@ -275,11 +278,14 @@ model, price_scaler, error_percentage = train_and_evaluate(
 # Предсказание на новых данных (контрольный образец)
 pred_test = model.predict([cat_test, num_test])
 # %% cell
-print(pred_test)
+# Предсказание на новых данных (контрольный образец)
+pred_test = model.predict([cat_test, num_test])
+mean_error = mean_absolute_error(pred_test, y_test)
+print("Средняя абсолютная ошибка:", mean_error)
 
 # %% cell
 for i in range(10):
-    x = y_test[i,0]
+    x = y_test[i, 0]
     y = pred_test[i, 0]
     print(
         "Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}".format(
@@ -288,3 +294,15 @@ for i in range(10):
             abs(x - y),
         )
     )
+
+
+# %% cell
+fig, ax = plt.subplots(figsize=(6, 6))
+ax.scatter(pred_test, y_test)  # Отрисовка точечного графика
+ax.set_xlim(0, 1)  # Ограничение оси по x
+ax.set_ylim(0, 1)  # Ограничение оси по x
+ax.plot(plt.xlim(), plt.ylim(), "r")  # Отрисовка диагональной линии
+plt.xlabel("Правильные значения")
+plt.ylabel("Предсказания")
+plt.grid()
+plt.show()
