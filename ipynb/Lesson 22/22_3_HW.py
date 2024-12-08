@@ -38,35 +38,41 @@
 #
 #
 
-# %% colab={"base_uri": "https://localhost:8080/"} id="BDCOnE5A7XiG" outputId="c6c455d1-0d56-4c8d-cdfd-a281ae0c0836"
+# %% cell
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import requests
+from keras.layers import (
+    BatchNormalization,
+    Dense,
+    Dropout,
+    Embedding,
+    Flatten,
+    Input,
+    concatenate,
+)
+from keras.models import Model
+from keras.optimizers import Adam
+from numpy._core.defchararray import decode
 from sklearn.metrics import mean_absolute_error
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
+# %% colab={"base_uri": "https://localhost:8080/"} id="BDCOnE5A7XiG" outputId="c6c455d1-0d56-4c8d-cdfd-a281ae0c0836"
 url = "https://storage.yandexcloud.net/academy.ai/japan_cars_dataset.csv"
 response = requests.get(url)
 with open("japan_cars_dataset.csv", "wb") as f:
     f.write(response.content)
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 363} id="NS_vFnv17mjE" outputId="99be074f-2971-4b03-855f-cbfc855c6347"
-import pandas as pd
-
 cars = pd.read_csv("japan_cars_dataset.csv", sep=",")
-# cars.head(10)
+# cars.shape
 cars.info()
+cars.head(10)
 
 # %% id="b-a8LLHThFg8"
 # ваше решение
-
-
-# %% cell
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from keras.layers import Dense, Dropout, Input, concatenate
-from keras.models import Model
-from keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
 
 # %% cell
@@ -99,25 +105,33 @@ def prepare_data(file_path):
         "hand_drive",
         "fuel",
     ]
-    label_encoders = {}
     categorical_encoded = []
-    numerical_columns = ["year", "mileage", "engine_capacity"]
+
+
+    # numerical_columns = ["year", "mileage", "engine_capacity"]
+    numerical_columns = ["car_age", "mileage_per_year"]
+    cars["car_age"] = 2024 - cars["year"]  # Car age
+    cars["mileage_per_year"] = cars["mileage"] / cars["car_age"]
+
+    # Normalize price range
+    price_scaler = StandardScaler()
+    prices_scaled = price_scaler.fit_transform(cars[["price"]])
+
+
+    # # Group rare categories
+    # min_categories = 10
+    # for col in categorical_columns:
+    #     value_counts = cars[col].value_counts()
+    #     rare_categories = value_counts[value_counts < min_categories].index
+    #     cars[col] = cars[col].replace(rare_categories, "Other")
 
     categorical_features = cars[categorical_columns]
     encoder = OneHotEncoder()
     categorical_encoded = encoder.fit_transform(categorical_features)
 
-    # for column in categorical_columns:
-    #     label_encoders[column] = LabelEncoder()
-    #     encoded_data = label_encoders[column].fit_transform(cars[column])
-    #     categorical_encoded.append(encoded_data)
-
     numerical_features = cars[numerical_columns]
     numerical_scaler = StandardScaler()
     numerical_scaled = numerical_scaler.fit_transform(numerical_features)
-
-    price_scaler = StandardScaler()
-    prices_scaled = price_scaler.fit_transform(cars[["price"]])
 
     return (
         categorical_encoded,
@@ -127,32 +141,37 @@ def prepare_data(file_path):
     )
 
 
+def decode_price(price, price_scaler):
+    decoded_price = price_scaler.inverse_transform([[prices[0][0]]])
+    return decoded_price[0][0]
+
+
 # %% cell
 # Create model
 def create_model(categorical_shape, numerical_shape):
-    # Categorical input branch
+    # Categorical branch
     categorical_input = Input(shape=(categorical_shape,))
     x1 = Dense(64, activation="relu")(categorical_input)
-    x1 = Dropout(0.3)(x1)
+    x1 = BatchNormalization()(x1)
     x1 = Dense(32, activation="relu")(x1)
+    x1 = Dropout(0.2)(x1)
 
-    # Numerical input branch
+    # Numerical branch
     numerical_input = Input(shape=(numerical_shape,))
     x2 = Dense(32, activation="relu")(numerical_input)
-    x2 = Dropout(0.3)(x2)
+    x2 = BatchNormalization()(x2)
     x2 = Dense(16, activation="relu")(x2)
+    x2 = Dropout(0.2)(x2)
 
-    # Combine branches
+    # Combine
     combined = concatenate([x1, x2])
-
-    # Output layers
-    x = Dense(64, activation="relu")(combined)
+    x = Dense(128, activation="relu")(combined)
+    x = BatchNormalization()(x)
     x = Dropout(0.3)(x)
-    x = Dense(32, activation="relu")(x)
+    x = Dense(64, activation="relu")(x)
     x = Dense(1, activation="linear")(x)
 
-    model = Model(inputs=[categorical_input, numerical_input], outputs=x)
-    return model
+    return Model(inputs=[categorical_input, numerical_input], outputs=x)
 
 
 def split_data(dataset_parts, test_size=0.2):
@@ -197,9 +216,14 @@ def train_and_evaluate(
     cat_val,
     num_val,
     y_val,
-    epochs=10,
-    batch_size=32,
+    epochs=None,
+    batch_size=None,
 ):
+    if epochs is None:
+        epochs = 100
+    if batch_size is None:
+        batch_size = 32
+
     model = create_model(categorical_data.shape[1], numerical_data.shape[1])
     model.compile(optimizer=Adam(learning_rate=1e-4), loss="mse", metrics=["mae"])
 
@@ -250,13 +274,24 @@ def train_and_evaluate(
 
     return model, price_scaler, mape
 
-
 # %% cell
 # Prepare data
 categorical_data, numerical_data, prices, price_scaler = prepare_data(
     "japan_cars_dataset.csv"
 )
-split_datasets = split_data([categorical_data, numerical_data, prices])
+
+# print(categorical_data.shape)
+
+# print(numerical_data.shape)
+# print(numerical_data[0])
+
+# print(prices.shape)
+# print(prices[0])
+# decodered_price = decode_price(prices[0][0], price_scaler)
+# print(decodered_price)
+
+# %% cell
+split_datasets = split_data([categorical_data, numerical_data, prices], 0.1)
 
 # Unpack the split datasets
 cat_train, cat_val, cat_test = split_datasets[0:3]
@@ -270,7 +305,7 @@ print(f"Test set size: {len(y_test)}")
 # %% cell
 # Run training and evaluation
 model, price_scaler, error_percentage = train_and_evaluate(
-    cat_train, num_train, y_train, cat_val, num_val, y_val
+    cat_train, num_train, y_train, cat_val, num_val, y_val, epochs=100
 )
 
 
@@ -282,6 +317,13 @@ pred_test = model.predict([cat_test, num_test])
 pred_test = model.predict([cat_test, num_test])
 mean_error = mean_absolute_error(pred_test, y_test)
 print("Средняя абсолютная ошибка:", mean_error)
+
+# %% cell
+test_predictions = np.expm1(model.predict([cat_test, num_test]))
+y_test_actual = np.expm1(y_test)
+mse = np.mean((y_test_actual - test_predictions) ** 2)
+print("Средняя абсолютная ошибка:", mse)
+
 
 # %% cell
 for i in range(10):
