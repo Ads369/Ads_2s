@@ -107,7 +107,6 @@ def prepare_data(file_path):
     ]
     categorical_encoded = []
 
-
     # numerical_columns = ["year", "mileage", "engine_capacity"]
     numerical_columns = ["car_age", "mileage_per_year"]
     cars["car_age"] = 2024 - cars["year"]  # Car age
@@ -116,7 +115,6 @@ def prepare_data(file_path):
     # Normalize price range
     price_scaler = StandardScaler()
     prices_scaled = price_scaler.fit_transform(cars[["price"]])
-
 
     # # Group rare categories
     # min_categories = 10
@@ -142,8 +140,8 @@ def prepare_data(file_path):
 
 
 def decode_price(price, price_scaler):
-    decoded_price = price_scaler.inverse_transform([[prices[0][0]]])
-    return decoded_price[0][0]
+    decoded_price = price_scaler.inverse_transform(prices)
+    return decoded_price
 
 
 # %% cell
@@ -274,6 +272,7 @@ def train_and_evaluate(
 
     return model, price_scaler, mape
 
+
 # %% cell
 # Prepare data
 categorical_data, numerical_data, prices, price_scaler = prepare_data(
@@ -312,23 +311,17 @@ model, price_scaler, error_percentage = train_and_evaluate(
 # %% cell
 # Предсказание на новых данных (контрольный образец)
 pred_test = model.predict([cat_test, num_test])
-# %% cell
-# Предсказание на новых данных (контрольный образец)
-pred_test = model.predict([cat_test, num_test])
+pred = price_scaler.inverse_transform(pred_test)
+real = price_scaler.inverse_transform(y_test)
+
+
 mean_error = mean_absolute_error(pred_test, y_test)
 print("Средняя абсолютная ошибка:", mean_error)
 
 # %% cell
-test_predictions = np.expm1(model.predict([cat_test, num_test]))
-y_test_actual = np.expm1(y_test)
-mse = np.mean((y_test_actual - test_predictions) ** 2)
-print("Средняя абсолютная ошибка:", mse)
-
-
-# %% cell
 for i in range(10):
-    x = y_test[i, 0]
-    y = pred_test[i, 0]
+    x = real[i, 0]
+    y = pred[i, 0]
     print(
         "Реальное значение: {:6.2f}  Предсказанное значение: {:6.2f}  Разница: {:6.2f}".format(
             x,
@@ -340,9 +333,9 @@ for i in range(10):
 
 # %% cell
 fig, ax = plt.subplots(figsize=(6, 6))
-ax.scatter(pred_test, y_test)  # Отрисовка точечного графика
-ax.set_xlim(0, 1)  # Ограничение оси по x
-ax.set_ylim(0, 1)  # Ограничение оси по x
+ax.scatter(pred, real)  # Отрисовка точечного графика
+# ax.set_xlim(0, 1)  # Ограничение оси по x
+# ax.set_ylim(0, 1)  # Ограничение оси по x
 ax.plot(plt.xlim(), plt.ylim(), "r")  # Отрисовка диагональной линии
 plt.xlabel("Правильные значения")
 plt.ylabel("Предсказания")
