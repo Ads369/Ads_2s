@@ -24,11 +24,21 @@
 # %% [markdown] id="eMEgCDqiqDvi"
 # **В домашней работе вам необходимо:**
 # 1. Выбрать любую понравившуюся модель из [практической](https://colab.research.google.com/drive/1-D-qXFYJ9b5sLLz_CFkUYmR-I2tM7KO2) части урока.
-# 2. Используя известный [датасет](https://storage.yandexcloud.net/academy.ai/AAPL.csv) котировок Apple, обучить модель. Вывести графики из урока: график процесса обучения, сопоставления базового и прогнозного рядов, а также график автокорреляции.
-# 3. Для получения трех проходных баллов за урок необходимо скорректировать код урока для данных с batch_size не равному 1.
-# 4. Хотите 4 балла? Возьмите полносвязанную модель или с одномерной сверткой. Добейтесь подбором параметров и выбором архитектуры идеального графика автокорреляции без холмиков, равномерно спадающих графиков эталонной и прогнозной автокорреляции, максимально близко друг к другу.
-# 5. Для получения дополнительного балла вам необходимо избавиться от тренда с помощью дифференцирования в датасете.
-# 6. Еще один балл можно получить сверху, если догадаетесь как на графике сопоставления базового и прогнозного рядов отобразить реальную дату, а не относительную.
+# 2. Используя известный
+# [датасет](https://storage.yandexcloud.net/academy.ai/AAPL.csv) котировок Apple,
+# обучить модель. Вывести графики из урока: график процесса обучения,
+# сопоставления базового и прогнозного рядов, а также график автокорреляции.
+# 3. Для получения трех проходных баллов за урок необходимо скорректировать код
+# урока для данных с batch_size не равному 1.
+# 4. Хотите 4 балла? Возьмите полносвязанную модель или с одномерной сверткой.
+# Добейтесь подбором параметров и выбором архитектуры идеального графика
+# автокорреляции без холмиков, равномерно спадающих графиков эталонной и
+# прогнозной автокорреляции, максимально близко друг к другу.
+# 5. Для получения дополнительного балла вам необходимо избавиться от тренда с
+# помощью дифференцирования в датасете.
+# 6. Еще один балл можно получить сверху, если догадаетесь как на графике
+# сопоставления базового и прогнозного рядов отобразить реальную дату, а не
+# относительную.
 
 
 # %% id="ZApSR5aPgxnf"
@@ -39,11 +49,22 @@ import numpy as np
 import pandas as pd
 from keras.layers import (
     LSTM,
+    BatchNormalization,
+    Conv1D,
+    Conv2D,
     Dense,
+    Dropout,
+    Flatten,
+    GlobalMaxPooling1D,
+    Input,
+    MaxPooling1D,
+    RepeatVector,
+    concatenate,
 )
-from keras.models import Sequential
+from keras.models import Model, Sequential
+from keras.optimizers import Adam
 from pylab import rcParams
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 plt.style.use("ggplot")
@@ -62,11 +83,6 @@ price = pd.read_csv(
     usecols=["Adj Close", "Volume", "Date"],
     parse_dates=["Date"],
 )
-
-# Fix trand
-price["diff"] = price["Adj Close"].diff()
-price = price.dropna()
-
 price.head()
 
 # %%
@@ -85,6 +101,8 @@ ax2.set_ylabel("Сделки")
 ax2.legend()
 
 plt.xlabel("Время")
+# Регулировка пределов оси x
+# plt.xlim(0, length)
 # Указание расположить подграфики плотнее друг к другу
 plt.tight_layout()
 # Фиксация графика
@@ -92,11 +110,8 @@ plt.show()
 
 # %%
 price.drop(columns=["Volume"], inplace=True)
-price.drop(columns=["Adj Close"], inplace=True)
-price.head()
 
 # %%
-# Split the data
 test_size = round(len(price) * 0.8)
 train_data = price[:test_size]
 test_data = price[test_size:]
@@ -176,13 +191,15 @@ def correlate(a, b):
 
 
 # Функция визуализации результата предсказания сети и верных ответов
-def show_predict(y_pred, y_true, dates, title=""):
-    plot_dates = dates[-1 * len(y_pred) + 1 :]
-
-    # Plot with dates on x-axis
-    plt.plot(plot_dates, y_pred[1:], label="Прогноз")
-    plt.plot(plot_dates, y_true[:-1], label="Базовый")
+def show_predict(y_pred, y_true, title=""):
+    fig = plt.figure(figsize=(14, 7))
+    # Прогнозный ряд сдвигается на 1 шаг назад, так как предсказание делалось на 1 шаг вперед
+    plt.plot(y_pred[1:], label=f"Прогноз")
+    plt.plot(y_true[:-1], label=f"Базовый")
     plt.title(title)
+
+    # Показываем только целые метки шкалы оси x
+    fig.gca().xaxis.get_major_locator().set_params(integer=True)
     plt.xlabel("Дата (относительно начала выборки)")
     plt.ylabel("Значение")
     plt.legend()
@@ -222,8 +239,8 @@ def show_corr(y_pred, y_true, title="", break_step=30):
     # Вычисление коэффициентов автокорреляции базового ряда с разным смещением
     auto_corr = [correlate(y_true[:-step, 0], y_true[step:, 0]) for step in steps]
 
-    plt.plot(steps, cross_corr, label="Прогноз")
-    plt.plot(steps, auto_corr, label="Эталон")
+    plt.plot(steps, cross_corr, label=f"Прогноз")
+    plt.plot(steps, auto_corr, label=f"Эталон")
 
     plt.title(title)
 
@@ -271,16 +288,12 @@ lstm_model.fit(
 history_plot(lstm_model.history, "LSTM(50)")
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 647} id="RDyAWDDm0dFz" outputId="89c0eac9-4013-4eae-8099-a1900636c88a"
-test_dates = test_data.index
 # Получение денормализованного предсказания и данных базового ряда
 y_pred, y_true = get_pred(lstm_model, x_test, y_test, scaler)
 
 # Отрисовка графика сопоставления базового и прогнозного рядов
 show_predict(
-    y_pred,
-    y_true,
-    test_dates,
-    title="LSTM(50) модель. Сопоставление базового и прогнозного рядов",
+    y_pred, y_true, title=f"LSTM(50) модель. Сопоставление базового и прогнозного рядов"
 )
 
 # %%
@@ -288,50 +301,5 @@ show_predict(
 show_corr(
     y_pred,
     y_true,
-    title="LSTM(50) модель. Корреляционные коэффициенты по шагам смещения",
+    title=f"LSTM(50) модель. Корреляционные коэффициенты по шагам смещения",
 )
-
-# %%
-# импортируем функцию seasonal_decompose из statsmodels
-# задаем размер графика
-from pylab import rcParams
-from statsmodels.tsa.seasonal import seasonal_decompose
-
-rcParams["figure.figsize"] = 11, 9
-
-# qwe = np.diff(price['Adj Close'])
-# qwe = np.diff(price['diff'])
-
-# применяем функцию к данным о котировках
-decompose = seasonal_decompose(price.resample(rule="1M").mean())
-decompose.plot()
-
-plt.show()
-
-
-# %%
-def get_corr_coef(
-    data,  # данные
-    lag,  # временной лаг
-):
-    array_data = np.asarray(data)  # Преобразуем в массив NumPy
-
-    # вычисление матрицы коэффициентов и отбор коэффициента из нужного места матрицы
-    return np.corrcoef(array_data[lag:], array_data[:-lag])[0, 1]
-
-
-# %%
-np.round(get_corr_coef(price["diff"], 5), 2)
-# импортируем автокорреляционную функцию (ACF)
-from statsmodels.graphics.tsaplots import plot_acf
-
-# применим функцию к нашему набору данных
-# параметр lags - сколько мы хотим отобразить лагов
-plot_acf(price["diff"], lags=100)
-
-# добавим отступы сверху и снизу на графике
-plt.axis("tight")
-plt.title("Влияние тренда на автокорреляцию котировок акций")
-plt.xlabel("Временной лаг", fontsize=16)
-plt.ylabel("Коэффициент корреляции", fontsize=16)
-plt.show()
